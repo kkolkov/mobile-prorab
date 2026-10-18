@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Мобильный прораб</title>
+  <link rel="stylesheet" href="css/app.css?v=20261016-onboarding-1">
+</head>
+<body>
+  <div id="account-bar" hidden><span id="account-login"></span><button id="account-home" class="secondary">Мои проекты</button><button id="logout" class="secondary">Выйти</button><span id="account-error" role="alert"></span></div>
+  <main id="app">
+    <div class="shell">
+      <h1>Мобильный прораб</h1>
+      <p id="startup-status" role="status">Загружаем приложение…</p>
+      <noscript><p>Для работы приложения включите JavaScript в настройках браузера и обновите страницу.</p></noscript>
+    </div>
+  </main>
+  <script>
+    // Local standalone web server uses backend:8080; deployed web and API share an origin.
+    window.PRORAB_API_BASE = window.PRORAB_API_BASE || (
+      ['localhost', '127.0.0.1'].includes(window.location.hostname) && window.location.port === '5500'
+        ? 'http://localhost:8080/api' : '/api'
+    );
+    (function () {
+      var app = document.getElementById('app');
+      var initialScreen = app.firstElementChild;
+      var timeout = setTimeout(function () {
+        if (app.firstElementChild === initialScreen) showStartupError();
+      }, 10000);
+
+      function showStartupError(error) {
+        clearTimeout(timeout);
+        if (app.firstElementChild !== initialScreen) return;
+        document.getElementById('startup-status').textContent =
+          'Не удалось загрузить приложение. Проверьте подключение и обновите страницу.';
+        if (!document.getElementById('startup-retry')) {
+          var retry = document.createElement('button');
+          retry.id = 'startup-retry';
+          retry.className = 'primary';
+          retry.textContent = 'Повторить';
+          retry.onclick = function () { window.location.reload(); };
+          initialScreen.appendChild(retry);
+        }
+        if (error) console.error('Application startup failed', error);
+      }
+
+      import('./js/main.js?v=20261017-auth-1').then(function () {
+        clearTimeout(timeout);
+      }).catch(showStartupError);
+    }());
+  </script>
+</body>
+</html>

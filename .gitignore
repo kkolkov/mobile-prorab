@@ -1,0 +1,17 @@
+.gradle/
+**/build/
+**/node_modules/
+.idea/
+*.log
+.DS_Store
+**/.expo/
+mobile/dist/
+mobile/.env.local
+**/.env
+**/.env.*
+!**/.env.example
+~$*
+Личный_дневник_*.docx
+Шаблон_личн*.docx
+*дневник*.docx
+**/.claude/

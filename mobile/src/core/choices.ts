@@ -1,0 +1,20 @@
+export const choices = {
+ currentState:{no_finish:'Без отделки',white_box:'Предчистовая / White box',old_finish:'Старая отделка',lived_in:'Жилая квартира с ремонтом'},
+ targetState:{finish_only:'Чистовая отделка',move_in_ready:'Готовая к проживанию',fully_furnished:'Полностью обустроенная'},
+ finishLevel:{budget:'Бюджетный',comfort:'Комфорт',business:'Бизнес'},
+ floor:{unknown:'Пока не определено',laminate:'Ламинат',vinyl:'Кварцвинил',parquet:'Паркетная доска',tile:'Плитка'},
+ walls:{unknown:'Пока не определено',wallpaper:'Обои',paint:'Покраска',plaster:'Декоративная штукатурка'},
+ ceiling:{unknown:'Пока не определено',stretch:'Натяжной',paint:'Покраска',drywall:'Гипсокартон'},
+ doors:{unknown:'Пока не определено',standard:'Обычные',concealed:'Скрытого монтажа'},
+ demolition:{unknown:'Пока не знаю',full:'Полностью',partial:'Частично',none:'Не требуется'},
+ wallPreparation:{unknown:'Пока не знаю',full:'Выравнивание заново',local:'Локальное исправление',ready:'Стены готовы к отделке'},
+ floorPreparation:{unknown:'Пока не знаю',new:'Новая стяжка',local:'Локальное выравнивание',ready:'Основание готово'},
+ electrical:{unknown:'Пока не знаю',full:'Полная замена',partial:'Частичная замена',keep:'Сохранить существующую'},
+ type:{living:'Жилая комната',kitchen:'Кухня',combined_bathroom:'Совмещённый санузел',bathroom:'Ванная',toilet:'Туалет',corridor:'Коридор',wardrobe:'Гардеробная',storage:'Кладовая',other:'Другое помещение'},
+ cabinets:{unknown:'Пока не знаю',new:'Новый',keep:'Оставить существующий'},
+ facade:{unknown:'Пока не знаю',film:'Плёнка',plastic:'Пластик',enamel:'Эмаль'},
+ countertop:{unknown:'Пока не знаю',laminated:'Ламинированная',stone:'Искусственный камень'},
+ presence:{none:'Нет',balcony:'Балкон',loggia:'Лоджия',both:'Есть оба'},
+ glazing:{unknown:'Пока не знаю',keep:'Оставить существующее',new:'Установить или заменить',none:'Не требуется'},
+ insulation:{unknown:'Пока не знаю',yes:'Нужно',no:'Не нужно'}
+};

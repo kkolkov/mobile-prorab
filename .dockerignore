@@ -1,0 +1,16 @@
+**
+!Dockerfile
+!gradlew
+!settings.gradle
+!gradle/
+!gradle/**
+!backend/
+!backend/build.gradle
+!backend/src/
+!backend/src/**
+!frontend/
+!frontend/index.html
+!frontend/css/
+!frontend/css/**
+!frontend/js/
+!frontend/js/**

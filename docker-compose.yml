@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: prorab
+      POSTGRES_USER: prorab
+      POSTGRES_PASSWORD: prorab
+    ports: ["5432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+volumes: { postgres_data: {} }

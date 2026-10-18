@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Мобильный прораб",
+    "slug": "mobile-prorab",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ru.prorab.mobile",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Подключение к серверу проекта на вашем Mac в локальной сети.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store"
+    ],
+    "scheme": "prorab",
+    "experiments": {
+      "reactCompiler": false
+    }
+  }
+}

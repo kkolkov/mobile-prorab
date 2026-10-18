@@ -1,0 +1,38 @@
+# Demo deployment: free Postgres expires after 30 days.
+services:
+  - type: web
+    name: mobile-prorab
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: mobile-prorab-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: mobile-prorab-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: mobile-prorab-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: mobile-prorab-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: mobile-prorab-db
+          property: password
+databases:
+  - name: mobile-prorab-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "17"
+    databaseName: prorab
+    user: prorab
+    ipAllowList: []
