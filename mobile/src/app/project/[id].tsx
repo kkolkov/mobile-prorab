@@ -1,3 +1,4 @@
+import {durationRange} from '../../core/display';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -20,9 +21,9 @@ export default function Dashboard() {
     {p&&<><View style={styles.row}><View style={{flex:1}}><Body>Статус</Body><Heading>Планирование</Heading></View>
       <View style={{flex:1}}><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
       <Demo/>{p.estimateStatus==='stale'&&<Notice>Активная смета рассчитана по прежним параметрам. Новая смета применяется отдельно.</Notice>}
-      <Heading>Бюджет</Heading><Body>{range(p.budgetMinRub,p.budgetMaxRub)}</Body><Heading>Срок</Heading><Body>{p.durationMinDays==null?'Пока не рассчитан':`${p.durationMinDays} — ${p.durationMaxDays} дн.`}</Body>
+      <Heading>Бюджет</Heading><Body>{range(p.budgetMinRub,p.budgetMaxRub)}</Body><Heading>Срок</Heading><Body>{durationRange(p.durationMinDays,p.durationMaxDays)}</Body>
       {p.budgetMinRub==null&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/>}
-      <Button label="Доступ к полной версии" secondary onPress={()=>router.push('/access')}/><Heading>Инструменты проекта</Heading>{['План работ','Финансовый трекер','Трекер ремонта'].map(label=><Notice key={label}>{label}{'\n'}Раздел пока не реализован.</Notice>)}
+      <Heading>Инструменты проекта</Heading>{['План работ','Финансовый трекер','Трекер ремонта'].map(label=><Notice key={label}>{label}{'\n'}Раздел пока не реализован.</Notice>)}
     </>}<ErrorText message={error}/>{!!error&&<Button label="Повторить" disabled={busy} onPress={load}/>}
   </Screen>;
 }

@@ -148,12 +148,12 @@ public class RefinementService {
     private ProjectRefinement prepare(Project p){
         var existing=refinements.findById(p.getProjectId());if(existing.isPresent())return existing.get();
         if(p.getCompletedStep()<5)throw new BusinessException("Сначала завершите создание проекта");
-        List<Room> rooms=new ArrayList<>();resize(rooms,recommended(p.getAreaM2()));
+        List<Room> rooms=new ArrayList<>();resize(rooms,p.getRoomsCount()==null?recommended(p.getAreaM2()):p.getRoomsCount());
         for(int i=0;i<Objects.requireNonNullElse(p.getKitchensCount(),1);i++)rooms.add(room("kitchen","Кухня "+(i+1)));
         for(int i=0;i<Objects.requireNonNullElse(p.getBathroomsCount(),1);i++)rooms.add(room("combined_bathroom","Санузел "+(i+1)));
         Map<UUID,Kitchen> kitchens=new LinkedHashMap<>();rooms.stream().filter(r->r.type().equals("kitchen")).forEach(r->kitchens.put(r.id(),Kitchen.defaults()));
         Apartment a=new Apartment(p.getCurrentState(),p.getTargetState(),p.getFinishLevel(),p.getAreaM2(),null,"unknown","unknown","unknown","unknown","unknown","unknown","unknown","unknown");
-        RefinementData d=new RefinementData(a,rooms,false,kitchens,new Exteriors("none",Exterior.defaults(),Exterior.defaults()),Set.of());
+        RefinementData d=new RefinementData(a,rooms,p.getRoomsCount()!=null,kitchens,new Exteriors("none",Exterior.defaults(),Exterior.defaults()),Set.of());
         ProjectRefinement r=new ProjectRefinement(p.getProjectId(),write(d));r.setCalculationProjectVersion(p.getVersion());
         if(p.getBudgetMinRub()!=null&&p.getBudgetMaxRub()!=null){
             BigDecimal min=BigDecimal.valueOf(p.getBudgetMinRub()),max=BigDecimal.valueOf(p.getBudgetMaxRub());BigDecimal expected=min.add(max).divide(new BigDecimal("2"),0,RoundingMode.HALF_UP);
@@ -173,6 +173,7 @@ public class RefinementService {
     }
     private void updateProject(Project p,RefinementData d){
         Apartment a=d.apartment();p.setAreaM2(a.areaM2());p.setCurrentState(a.currentState());p.setTargetState(a.targetState());p.setFinishLevel(a.finishLevel());
+        p.setRoomsCount((int)d.rooms().stream().filter(r->r.type().equals("living")).count());
         p.setKitchensCount((int)d.rooms().stream().filter(r->r.type().equals("kitchen")).count());
         p.setBathroomsCount((int)d.rooms().stream().filter(r->Set.of("combined_bathroom","bathroom","toilet").contains(r.type())).count());
         String area=a.areaM2().stripTrailingZeros().toPlainString();

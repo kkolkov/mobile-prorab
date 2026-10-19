@@ -1,5 +1,5 @@
 export const questionnaireVersion = '1';
-export const questionnaireTitle = 'Расскажите о себе и вашем опыте ремонта';
+export const questionnaireTitle = 'Расскажите о себе';
 export const questionnaireSubtitle = 'Ответьте на 3 коротких вопроса';
 export const questions = [
   {key:'firstRenovation', label:'Это ваш первый ремонт?', options:[

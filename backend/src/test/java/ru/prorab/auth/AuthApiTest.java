@@ -14,10 +14,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AuthApiTest {
  @Autowired MockMvc mvc;@Autowired ObjectMapper json;@Autowired JdbcTemplate db;
- String credentials(String login,String password) throws Exception{return json.writeValueAsString(Map.of("login",login,"password",password));}
+ String credentials(String login,String password) throws Exception{return json.writeValueAsString(Map.of("login",login,"password",password,"privacyAccepted",true));}
  JsonNode register() throws Exception {return register("u"+UUID.randomUUID().toString().replace("-",""));}
  JsonNode register(String login) throws Exception{return json.readTree(mvc.perform(post("/api/auth/register").contentType("application/json").content(credentials(login,"Test-pass-123"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());}
  String bearer(JsonNode a){return "Bearer "+a.get("token").asText();}
+ @Test void renameValidatesOwnerVersionAndPreservesProjectData() throws Exception {
+  JsonNode owner=register(),other=register();
+  JsonNode project=json.readTree(mvc.perform(post("/api/projects/draft").header("Authorization",bearer(owner)).contentType("application/json").content("{\"areaM2\":33}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+  String id=project.get("projectId").asText(),path="/api/projects/"+id+"/name";
+  long version=project.get("version").asLong();
+  String body=json.writeValueAsString(Map.of("name","  Новый проект  ","version",version));
+  mvc.perform(put(path).header("Authorization",bearer(other)).contentType("application/json").content(body)).andExpect(status().isNotFound());
+  for(String invalid:List.of("", "   ","x".repeat(101)))mvc.perform(put(path).header("Authorization",bearer(owner)).contentType("application/json").content(json.writeValueAsString(Map.of("name",invalid,"version",version)))).andExpect(status().isBadRequest());
+  mvc.perform(put(path).header("Authorization",bearer(owner)).contentType("application/json").content("{\"name\":\"Новое\"}")).andExpect(status().isBadRequest());
+  JsonNode renamed=json.readTree(mvc.perform(put(path).header("Authorization",bearer(owner)).contentType("application/json").content(body)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+  assertEquals("Новый проект",renamed.get("name").asText());assertEquals("user",renamed.get("nameSource").asText());assertTrue(renamed.get("version").asLong()>version);
+  for(String key:List.of("status","completedStep","estimateStatus","budgetMinRub","durationMinDays"))assertEquals(project.get(key),renamed.get(key));
+  assertEquals(0,project.get("areaM2").decimalValue().compareTo(renamed.get("areaM2").decimalValue()));
+  mvc.perform(put(path).header("Authorization",bearer(owner)).contentType("application/json").content(body)).andExpect(status().isConflict());
+  db.update("update projects set status='ACTIVE', completed_step=5 where project_id=?",UUID.fromString(id));
+  mvc.perform(put(path).header("Authorization",bearer(owner)).contentType("application/json").content(json.writeValueAsString(Map.of("name","Активный проект","version",renamed.get("version").asLong())))).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("active")).andExpect(jsonPath("$.completedStep").value(5));
+  assertEquals("Активный проект",db.queryForObject("select name from projects where project_id=?",String.class,UUID.fromString(id)));
+ }
+ @Test void registrationRequiresExplicitPrivacyConsent() throws Exception {
+  String login="consent"+UUID.randomUUID().toString().replace("-","");
+  for(String extra:List.of("",",\"privacyAccepted\":false",",\"privacyAccepted\":null")){
+   mvc.perform(post("/api/auth/register").contentType("application/json").content("{\"login\":\""+login+"\",\"password\":\"Test-pass-123\""+extra+"}")).andExpect(status().isBadRequest());
+   assertEquals(0,db.queryForObject("select count(*) from accounts where login=?",Integer.class,login));
+  }
+  register(login);
+  mvc.perform(post("/api/auth/login").contentType("application/json").content(json.writeValueAsString(Map.of("login",login,"password","Test-pass-123")))).andExpect(status().isOk());
+ }
  @Test void registrationHashesPasswordAndLoginWorksAcrossSessions() throws Exception {
   JsonNode a=register();UUID user=UUID.fromString(a.get("userId").asText());
   String stored=db.queryForObject("select password_hash from accounts where user_id=?",String.class,user);

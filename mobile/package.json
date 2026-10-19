@@ -12,7 +12,9 @@
     "lint": "expo lint",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "test:browser": "node --test --test-concurrency=1 tests/browser/*.test.mjs",
-    "ios:simulator": "EXPO_PUBLIC_API_URL=http://127.0.0.1:8080/api expo run:ios --configuration Release --device generic --no-bundler --output ./build/simulator"
+    "ios:simulator": "EXPO_PUBLIC_API_URL=http://127.0.0.1:8080/api expo run:ios --configuration Release --device generic --no-bundler --output ./build/simulator",
+    "android:prebuild": "expo prebuild --platform android --no-install",
+    "android:apk": "npx eas-cli@latest build --platform android --profile preview"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",

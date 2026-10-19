@@ -20,6 +20,9 @@ public class Project {
     @Column(length = 250) private String address;
     @Enumerated(EnumType.STRING) private CurrentState currentState;
     @Enumerated(EnumType.STRING) private TargetState targetState;
+    private Integer roomsCount;
+    public Integer getRoomsCount(){return roomsCount;}
+    public void setRoomsCount(Integer value){roomsCount=value;}
     private Integer kitchensCount;
     private Integer bathroomsCount;
     private Boolean redevelopment;
@@ -32,6 +35,17 @@ public class Project {
     @Column(nullable = false) private Instant updatedAt;
     @Version @Column(nullable = false) private long version;
 
+    private Boolean questionnaireFirstRenovation;
+    private String questionnaireManager;
+    private String questionnaireStage;
+    private String questionnaireVersion;
+    public void setQuestionnaire(ru.prorab.onboarding.dto.AnswersRequest answers) {
+        if(answers==null)return;
+        questionnaireFirstRenovation=answers.firstRenovation();
+        questionnaireManager=answers.renovationManager();
+        questionnaireStage=answers.renovationStage();
+        questionnaireVersion=answers.questionnaireVersion();
+    }
     private UUID ownerId;
     public UUID getOwnerId() { return ownerId; }
     public void setOwnerId(UUID ownerId) { this.ownerId = ownerId; }

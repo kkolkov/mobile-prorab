@@ -31,6 +31,11 @@ public class ProjectController {
         }
     }
 
+    @PutMapping("/{projectId}/name")
+    public ProjectResponse rename(@PathVariable UUID projectId, @Valid @RequestBody RenameProjectRequest request) {
+        return projectService.rename(projectId, request);
+    }
+
     @GetMapping("/{projectId}")
     public ProjectResponse get(@PathVariable UUID projectId) { return projectService.get(projectId); }
 

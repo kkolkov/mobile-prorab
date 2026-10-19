@@ -10,9 +10,10 @@ const hostUri = Platform.OS==='web' && typeof window!=='undefined' ? window.loca
 export const API_BASE = apiBase(process.env.EXPO_PUBLIC_API_URL, hostUri);
 export const request = createRequest(API_BASE, fetch, 15000, authHeaders, expireSession);
 export const api = {
-  login: (login:string,password:string,register=false) => request<AuthSession>(`/auth/${register?'register':'login'}`,{login,password}),
+  login: (login:string,password:string,register=false,privacyAccepted=false) => request<AuthSession>(`/auth/${register?'register':'login'}`,{login,password,...(register?{privacyAccepted}:{})}),
   me: () => request<{userId:string;login:string}>('/auth/me'),
   logout: () => request('/auth/logout',{}),
+  rename: (p:Project,name:string) => request<Project>(`/projects/${p.projectId}/name`,{name,version:p.version},'PUT'),
   list: () => request<Project[]>('/projects'),
   access: () => request<Access>('/projects/access'),
   accessAction: (action:string,body:unknown={}) => request<Access>(`/projects/access/${action}`,body),

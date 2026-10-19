@@ -8,6 +8,13 @@ test('Expo registration, reload, logout and same account in web share projects a
   await page.getByRole('button',{name:'Нет аккаунта? Зарегистрироваться'}).click();
   const login='expo_'+crypto.randomUUID().replaceAll('-','');await page.getByLabel('Логин',{exact:true}).fill(login);await page.getByLabel('Пароль',{exact:true}).fill('Test-pass-123');
   await page.screenshot({path:'/tmp/prorab-auth-expo.png',fullPage:true});
+  assert.equal(await page.getByRole('button',{name:'Создать аккаунт',exact:true}).isDisabled(),true);
+  await page.getByRole('link',{name:'Политика обработки персональных данных',exact:true}).click();
+  await page.getByText('Lorem ipsum dolor sit amet, consectetur adipiscing elit.',{exact:false}).waitFor();
+  await page.getByRole('button',{name:'Назад',exact:true}).click();
+  assert.equal(await page.getByLabel('Логин',{exact:true}).inputValue(),login);
+  assert.equal(await page.getByRole('button',{name:'Создать аккаунт',exact:true}).isDisabled(),true);
+  await page.getByRole('checkbox',{name:'Я согласен на обработку персональных данных'}).click();
   await page.getByRole('button',{name:'Создать аккаунт',exact:true}).click();await page.getByRole('heading',{name:'Мои проекты',exact:true}).waitFor();
   const a=await page.evaluate(()=>JSON.parse(localStorage.getItem('prorab.auth.v1')));
   const draft=await fetch('http://localhost:8080/api/projects/draft',{method:'POST',headers:{Authorization:`Bearer ${a.token}`,'Content-Type':'application/json'},body:JSON.stringify({areaM2:55,name:'Проект с телефона'})});assert.equal(draft.status,200);

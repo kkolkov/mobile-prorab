@@ -14,5 +14,6 @@ public record StepRequest(
         Integer kitchensCount,
         Integer bathroomsCount,
         Boolean redevelopment,
-        FinishLevel finishLevel
+        FinishLevel finishLevel,
+        Integer roomsCount
 ) {}

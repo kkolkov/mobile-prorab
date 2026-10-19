@@ -13,6 +13,7 @@ export async function request(url, options = {}) {
 }
 
 export const api = {
+  rename: (id,name,version) => request(`/projects/${id}/name`,{method:'PUT',body:JSON.stringify({name,version})}),
   list: () => request('/projects'),
   me: () => request('/auth/me'),
   login: (body,register=false) => request(`/auth/${register?'register':'login'}`, {method:'POST',body:JSON.stringify(body)}),

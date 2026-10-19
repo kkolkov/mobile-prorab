@@ -3,7 +3,7 @@ export interface Project {
   projectId: string; status: 'draft' | 'active'; completedStep: number;
   name: string; nameSource: 'auto' | 'user'; areaM2: number; address: string | null;
   currentState: string | null; targetState: string | null; finishLevel: string | null;
-  kitchensCount: number; bathroomsCount: number; redevelopment: boolean;
+  roomsCount: number | null; kitchensCount: number; bathroomsCount: number; redevelopment: boolean;
   estimateStatus: string; budgetMinRub: number | null; budgetMaxRub: number | null;
   durationMinDays: number | null; durationMaxDays: number | null; version: number;
 }

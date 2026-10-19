@@ -21,7 +21,6 @@ test('AC-05/06/07: loading ends on CP-02, choice is local and save failure is re
     assert.match(elements.get('#app').innerHTML,/id="primary" disabled>Сохранение/);
     respond({projectId:'draft',version:0,areaM2:68,nameSource:'auto',completedStep:1});
     await saving;
-    accessElements.get('#access-leave').onclick();
     assert.match(elements.get('#app').innerHTML,/Текущее состояние квартиры/);
     assert.match(elements.get('#app').innerHTML,/id="primary" disabled>Продолжить/);
     assert.doesNotMatch(elements.get('#app').innerHTML,/Сохранение/);
@@ -36,7 +35,7 @@ test('AC-05/06/07: loading ends on CP-02, choice is local and save failure is re
     const retry = elements.get('#primary').onclick();
     respond({projectId:'draft',version:1,currentState:'old_finish',completedStep:2});
     await retry;
-    assert.match(elements.get('#app').innerHTML,/Целевое состояние квартиры/);
+    assert.match(elements.get('#app').innerHTML,/Желаемый результат ремонта/);
     assert.doesNotMatch(elements.get('#app').innerHTML,/Сохранение/);
   } finally {globalThis.fetch=originalFetch;delete globalThis.window;delete globalThis.document;delete globalThis.localStorage}
 });

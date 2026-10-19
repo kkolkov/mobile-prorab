@@ -34,6 +34,22 @@ class AccessApiTest {
  }
  JsonNode draft(UUID user) throws Exception {return call(post("/api/projects/draft"),user,"{\"areaM2\":33}");}
  String answers="{\"firstRenovation\":false,\"renovationManager\":\"self\",\"renovationStage\":\"completed\",\"questionnaireVersion\":\"1\"}";
+ @Test void questionnairePersistsWithEachDraftWithoutStartingTrialOrChangingGroup() throws Exception {
+  UUID user=UUID.randomUUID();
+  JsonNode first=call(post("/api/projects/draft"),user,"{\"areaM2\":33,\"questionnaire\":"+answers+"}");
+  UUID firstId=UUID.fromString(first.get("projectId").asText());
+  assertEquals("completed",db.queryForObject("select questionnaire_stage from projects where project_id=?",String.class,firstId));
+  assertEquals(false,db.queryForObject("select questionnaire_first_renovation from projects where project_id=?",Boolean.class,firstId));
+  JsonNode access=call(get(base),user,null);assertFalse(access.get("questionnaireRequired").asBoolean());
+  assertTrue(access.get("freemiumStartedAt").isNull());assertFalse(access.get("offerShown").asBoolean());
+  JsonNode second=call(post("/api/projects/draft"),user,"{\"areaM2\":44,\"questionnaire\":"+answers.replace("completed","planning")+"}");
+  assertEquals("planning",db.queryForObject("select questionnaire_stage from projects where project_id=?",String.class,UUID.fromString(second.get("projectId").asText())));
+  assertEquals(access.get("userGroup"),call(get(base),user,null).get("userGroup"));
+  UUID invalid=UUID.randomUUID();
+  mvc.perform(post("/api/projects/draft").header("X-Prorab-User",invalid).contentType("application/json").content("{\"areaM2\":33,\"questionnaire\":{}}")).andExpect(status().isBadRequest());
+  assertEquals(0,db.queryForObject("select count(*) from projects where owner_id=?",Integer.class,invalid));
+  assertEquals(0,db.queryForObject("select count(*) from user_access where user_id=?",Integer.class,invalid));
+ }
  @Test void assignmentAtSaveAlternatesByUserNotAnswersOrProjectCount() throws Exception {
   UUID a=UUID.randomUUID(),b=UUID.randomUUID(),c=UUID.randomUUID();
   mvc.perform(get(base).header("X-Prorab-User",a)).andExpect(status().isNotFound());

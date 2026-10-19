@@ -8,7 +8,7 @@ test('AC-09: CP-04 selects No for server boolean false and keeps Yes/No mutually
   globalThis.window = {};
   globalThis.document = {querySelector:s=>elements.get(s),querySelectorAll:s=>s==='.card'?cards:[]};
   state.step=4;
-  state.local={kitchensCount:1,bathroomsCount:1,redevelopment:false};
+  state.local={roomsCount:1,bathroomsCount:1,redevelopment:false};
   try {
     (await import('../js/app.js')).render();
     const selected = value => {

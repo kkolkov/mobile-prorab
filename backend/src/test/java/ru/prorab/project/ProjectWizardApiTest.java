@@ -31,6 +31,19 @@ class ProjectWizardApiTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
 
+    @Test void roomsCountIsSeparateFromKitchensAndSeedsRefinement() throws Exception {
+        JsonNode p=json.readTree(mvc.perform(post("/api/projects/draft").contentType("application/json").content("{\"areaM2\":90}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        String base="/api/projects/"+p.get("projectId").asText();
+        for(String count:new String[]{"0","-1","21","1.5"})mvc.perform(put(base+"/steps/4").contentType("application/json").content("{\"roomsCount\":"+count+",\"bathroomsCount\":1,\"version\":"+p.get("version").asLong()+"}")).andExpect(status().isBadRequest());
+        String[] data={"\"currentState\":\"old_finish\"","\"targetState\":\"move_in_ready\"","\"roomsCount\":3,\"bathroomsCount\":1,\"redevelopment\":false","\"finishLevel\":\"comfort\""};
+        for(int step=2;step<=5;step++)p=json.readTree(mvc.perform(put(base+"/steps/"+step+(step==5?"/estimate":"")).contentType("application/json").content("{\"version\":"+p.get("version").asLong()+","+data[step-2]+"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        mvc.perform(get(base)).andExpect(jsonPath("$.roomsCount").value(3)).andExpect(jsonPath("$.kitchensCount").value(1));
+        JsonNode refinement=json.readTree(mvc.perform(get(base+"/refinement")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        JsonNode rooms=refinement.get("data").get("rooms");int living=0,kitchens=0;
+        for(JsonNode room:rooms){if(room.get("type").asText().equals("living"))living++;if(room.get("type").asText().equals("kitchen"))kitchens++;}
+        assertEquals(3,living);assertEquals(1,kitchens);
+    }
+
     @Test void ac18ReturnToFirstStepUpdatesSameDraftWithoutCompletingSecondStep() throws Exception {
         JsonNode original = json.readTree(mvc.perform(post("/api/projects/draft")
                 .contentType("application/json").content("{\"areaM2\":33}"))

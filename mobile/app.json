@@ -20,7 +20,9 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "ru.prorab.mobile",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -34,6 +36,13 @@
     "scheme": "prorab",
     "experiments": {
       "reactCompiler": false
+    },
+    "owner": "kkolkov",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "963e8f89-ee86-4788-83c2-ac410e0b8520"
+      }
     }
   }
 }

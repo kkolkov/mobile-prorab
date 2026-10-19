@@ -39,9 +39,24 @@ public class ProjectService {
                 userName ? request.name().trim() : autoName(request.areaM2()));
         if (userName) project.setNameSource(NameSource.USER);
         project.setOwnerId(userId);
+        project.setQuestionnaire(request.questionnaire());
         repository.saveAndFlush(project);
-        if (userId != null) access.assign(userId, project.getProjectId());
+        if (userId != null) {
+            access.assign(userId, project.getProjectId());
+            if(request.questionnaire()!=null && access.get(userId).questionnaireRequired())
+                access.submit(userId,request.questionnaire());
+        }
         return mapper.toResponse(project);
+    }
+
+    @Transactional
+    public ProjectResponse rename(UUID id, RenameProjectRequest request) {
+        Project project=find(id);
+        checkVersion(project,request.version());
+        project.setName(request.name().trim());
+        project.setNameSource(NameSource.USER);
+        touch(project);
+        return mapper.toResponse(repository.saveAndFlush(project));
     }
 
     @Transactional(readOnly = true)
@@ -145,10 +160,13 @@ public class ProjectService {
         }
     }
     private void applyApartmentParamsIfPresent(Project p, StepRequest r) {
-        if (r.kitchensCount() != null || r.bathroomsCount() != null || r.redevelopment() != null) applyApartmentParams(p, r);
+        if (r.roomsCount() != null || r.kitchensCount() != null || r.bathroomsCount() != null || r.redevelopment() != null) applyApartmentParams(p, r);
     }
     private void applyApartmentParams(Project p, StepRequest r) {
-        p.setKitchensCount(validCount(r.kitchensCount())); p.setBathroomsCount(validCount(r.bathroomsCount()));
+        if(r.roomsCount()!=null)p.setRoomsCount(validCount(r.roomsCount()));
+        else if(r.kitchensCount()==null)throw new BusinessException("Укажите количество комнат");
+        if(r.kitchensCount()!=null)p.setKitchensCount(validCount(r.kitchensCount()));
+        p.setBathroomsCount(validCount(r.bathroomsCount()));
         p.setRedevelopment(Boolean.TRUE.equals(r.redevelopment()));
     }
     private void invalidateEstimateIfNeeded(Project p, int step) { if (step <= 5 && p.getEstimateStatus() == EstimateStatus.READY) p.setEstimateStatus(EstimateStatus.STALE); }

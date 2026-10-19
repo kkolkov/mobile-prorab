@@ -16,6 +16,7 @@ public class AuthService {
  private final SecureRandom random=new SecureRandom();private final String dummyHash;
  public AuthService(AccountRepository accounts,SessionRepository sessions,Passwords passwords){this.accounts=accounts;this.sessions=sessions;this.passwords=passwords;dummyHash=passwords.hash(UUID.randomUUID().toString());}
  @Transactional public AuthResponse register(Credentials input){
+  if(!Boolean.TRUE.equals(input.privacyAccepted()))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Подтвердите согласие на обработку персональных данных");
   String login=input.login().toLowerCase(Locale.ROOT);
   if(accounts.findByLogin(login).isPresent())throw new ResponseStatusException(HttpStatus.CONFLICT,"Этот логин уже занят");
   Account a=new Account();a.userId=UUID.randomUUID();a.login=login;a.passwordHash=passwords.hash(input.password());a.createdAt=Instant.now();

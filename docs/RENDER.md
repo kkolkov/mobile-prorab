@@ -60,3 +60,17 @@ PRORAB_DEPLOY_URL=http://127.0.0.1:18080 node --test frontend/tests/deployment/s
 - https://render.com/docs/blueprint-spec
 - https://render.com/docs/docker
 - https://render.com/docs/free
+
+## Текущий CI/CD
+
+Репозиторий: `kkolkov/mobile-prorab`, ветка `main`.
+Push в подключённую ветку запускает Render Auto-Deploy, если он включён
+в настройках сервиса. Dockerfile выполняет backend-тесты перед созданием JAR.
+Отдельного workflow GitHub Actions в репозитории пока нет; frontend и Expo
+проверяются локально. APK собирается отдельно в Expo EAS, push на Render
+не обновляет установленное мобильное приложение.
+
+Проверка деплоя `frontend/tests/deployment/smoke.mjs` охватывает согласие при
+регистрации, анкету до объекта, создание проекта, количество комнат, формат
+срока, переименование и восстановление после перезагрузки. Она создаёт
+один тестовый аккаунт и проект на проверяемом стенде.

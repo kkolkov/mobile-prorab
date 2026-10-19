@@ -11,13 +11,6 @@ async function api(path,body,method='POST'){
   const data=await response.json();assert.equal(response.status,200,JSON.stringify(data));return data;
 }
 const button=(page,name)=>page.getByRole('button',{name,exact:true});
-async function finishOnboarding(page){
- await page.getByRole('radio',{name:'Да',exact:true}).click();
- await page.getByRole('radio',{name:'Я сам(а)',exact:true}).click();
- await page.getByRole('radio',{name:'Планирую',exact:true}).click();
- await button(page,'Продолжить').click();
- await page.getByRole('button',{name:/^(Позже|Продолжить с калькулятором)$/}).click();
-}
 async function select(page,label,value){await button(page,label).click();await button(page,value).click();}
 async function activeProject(){
   account=await registerAccount();
@@ -35,7 +28,7 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     page.on('pageerror',e=>errors.push(e.message));let creates=0,id;
     page.on('response',async response=>{if(response.url().endsWith('/projects/draft')&&response.request().method()==='POST'){creates++;if(response.ok())id=(await response.json()).projectId;}});
     account=await registerAccount();await installSession(page,account);
-    await page.goto(front);await button(page,'Создать проект').click();
+    await page.goto(front);await button(page,'Создать проект').click();await page.getByRole('radio',{name:'Нет',exact:true}).click();await page.getByRole('radio',{name:'Я сам(а)',exact:true}).click();await page.getByRole('radio',{name:'Планирую',exact:true}).click();await button(page,'Продолжить').click();
     assert.equal(await button(page,'Продолжить').isDisabled(),true);assert.equal(creates,0);
     await page.getByLabel('Площадь квартиры, м²',{exact:true}).fill('33');
     assert.equal(await page.getByLabel('Название проекта · необязательно',{exact:true}).inputValue(),'Ремонт квартиры 33 м²');
@@ -43,7 +36,7 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     await page.getByLabel('Площадь квартиры, м²',{exact:true}).fill('38');
     assert.equal(await page.getByLabel('Название проекта · необязательно',{exact:true}).inputValue(),'Expo МОЯ квартира 38 м²');
     await page.getByLabel('Адрес · необязательно',{exact:true}).fill('Тестовый адрес');
-    await button(page,'Продолжить').click();await finishOnboarding(page);await button(page,'Старая отделка').waitFor();
+    await button(page,'Продолжить').click();await button(page,'Старая отделка').waitFor();
     assert.equal(creates,1);assert.equal((await api('/projects/'+id)).address,'Тестовый адрес');
     await button(page,'Старая отделка').click();assert.equal((await api('/projects/'+id)).currentState,null);
     await button(page,'Назад').click();await page.getByLabel('Площадь квартиры, м²',{exact:true}).fill('68');
@@ -56,7 +49,8 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     assert.equal(await button(page,'Продолжить').isDisabled(),true); // unsaved choice lost after process/page restart
     await button(page,'Готовая к проживанию').click();await button(page,'Продолжить').click();await button(page,'Нет').waitFor();
     assert.equal(await button(page,'Нет').getAttribute('aria-selected'),'true');
-    assert.equal(await button(page,'Уменьшить: Количество кухонь').isDisabled(),true);
+    assert.equal(await button(page,'Уменьшить: Количество комнат').isDisabled(),true);
+    await button(page,'Увеличить: Количество комнат').click();await button(page,'Увеличить: Количество комнат').click();
     await button(page,'Продолжить').click();await button(page,'Комфорт').click();await button(page,'Получить оценку').click();
     await page.getByRole('heading',{name:'Предварительная оценка',exact:true}).waitFor();
     await button(page,'Перейти в проект').click();await button(page,'Уточнить параметры проекта').click();

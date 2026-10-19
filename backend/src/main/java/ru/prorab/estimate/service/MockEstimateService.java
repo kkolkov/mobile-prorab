@@ -14,7 +14,7 @@ public class MockEstimateService implements EstimateService {
             case BUDGET -> 0.85; case COMFORT -> 1.0; case BUSINESS -> 1.35;
         };
         int budget = (int)Math.round(base * factor);
-        int rooms = p.getKitchensCount() + p.getBathroomsCount();
+        int rooms = (p.getRoomsCount()==null?p.getKitchensCount():p.getRoomsCount()) + p.getBathroomsCount();
         return new EstimateResult((int)(budget * .9), (int)(budget * 1.15), 90 + rooms * 10, 120 + rooms * 15);
     }
 }

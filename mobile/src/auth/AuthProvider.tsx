@@ -4,7 +4,7 @@ import { ApiError } from '../core/http';
 import { readSession,saveSession,subscribeExpiry,type AuthSession } from '../core/auth-storage';
 import { resetSession } from '../core/session';
 import { questionnaireDrafts } from '../onboarding/access';
-interface AuthContextValue {user:AuthSession|null;ready:boolean;error:string;retry:()=>void;signIn:(login:string,password:string,register:boolean)=>Promise<void>;signOut:()=>Promise<void>}
+interface AuthContextValue {user:AuthSession|null;ready:boolean;error:string;retry:()=>void;signIn:(login:string,password:string,register:boolean,privacyAccepted?:boolean)=>Promise<void>;signOut:()=>Promise<void>}
 const Context=createContext<AuthContextValue|null>(null);
 function clearDrafts(){resetSession();questionnaireDrafts.clear();}
 export function AuthProvider({children}:PropsWithChildren){
@@ -15,7 +15,7 @@ export function AuthProvider({children}:PropsWithChildren){
    if(e instanceof ApiError&&e.status===401){await saveSession(null);if(alive)setUser(null);}else if(alive)setError((e as Error).message);
   }).finally(()=>{if(alive)setReady(true);});return ()=>{alive=false;};
  },[retry]);
- async function signIn(login:string,password:string,register:boolean){const value=await api.login(login,password,register);await saveSession(value);clearDrafts();setUser(value);}
+ async function signIn(login:string,password:string,register:boolean,privacyAccepted=false){const value=await api.login(login,password,register,privacyAccepted);await saveSession(value);clearDrafts();setUser(value);}
  async function signOut(){try{await api.logout();}catch(e){if(!(e instanceof ApiError)||e.status!==401)throw e;}await saveSession(null);clearDrafts();setUser(null);}
  return <Context.Provider value={{user,ready,error,retry:()=>{setReady(false);setError('');setRetry(n=>n+1);},signIn,signOut}}>{children}</Context.Provider>;
 }

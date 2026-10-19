@@ -1,4 +1,7 @@
 spring:
+  jackson:
+    deserialization:
+      accept-float-as-int: false
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:prorab}
     username: ${DB_USER:prorab}

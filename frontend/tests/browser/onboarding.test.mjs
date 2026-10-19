@@ -1,44 +1,32 @@
-import {registerAccount,installSession} from './auth-helper.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {webkit,chromium} from 'playwright';
-const front='http://127.0.0.1:5500/';
-const base='http://localhost:8080/api';
-const button=(p,name)=>p.getByRole('button',{name,exact:true});
-async function access(id){const r=await fetch(base+'/projects/access',{headers:{Authorization:`Bearer ${id}`}});assert.equal(r.status,200);return r.json();}
-for(const [name,engine] of Object.entries({webkit,chromium}))test(`${name}: questionnaire return/retry, A consent and B calculator`,{timeout:90000},async()=>{
- const browser=await engine.launch();const groups=[];
- try{for(let i=0;i<2;i++){
-  const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const account=await registerAccount();await installSession(page,account);await page.goto(front);await button(page,'Создать проект').click();await page.locator('#area').fill('33');await page.locator('#name').fill('Моя квартира 33 м²');
-  await button(page,'Продолжить').click();await page.getByRole('heading',{name:'Расскажите о себе и вашем опыте ремонта'}).waitFor();
-  const id=account.token;let state=await access(id);groups.push(state.userGroup);
-  assert.equal(state.freemiumStartedAt,null);assert.equal(await button(page,'Продолжить').isDisabled(),true);
-  await page.getByRole('radio',{name:'Нет',exact:true}).check();await button(page,'Назад').click();
-  const projectId=new URLSearchParams(new URL(page.url()).hash.slice(1)).get('project');
-  await page.locator('#area').fill('38');await button(page,'Продолжить').click();
-  await page.getByRole('radio',{name:'Нет',exact:true}).waitFor();assert.equal(await page.getByRole('radio',{name:'Нет',exact:true}).isChecked(),true);
-  assert.equal(new URLSearchParams(new URL(page.url()).hash.slice(1)).get('project'),projectId);
-  await page.screenshot({path:`/tmp/prorab-onboarding-${name}.png`,fullPage:true});
-  await page.getByRole('radio',{name:'Я сам(а)',exact:true}).check();await page.getByRole('radio',{name:'Планирую',exact:true}).check();
-  await page.route('**/projects/access/answers',r=>r.abort());await button(page,'Продолжить').click();
-  await page.getByRole('alert').filter({hasText:/./}).waitFor();assert.equal(await page.getByRole('radio',{name:'Планирую',exact:true}).isChecked(),true);
-  await page.unroute('**/projects/access/answers');await button(page,'Продолжить').click();
-  if(state.userGroup==='A'){
-   await button(page,'Начать 7 дней бесплатно').waitFor();await page.screenshot({path:`/tmp/prorab-access-a-${name}.png`,fullPage:true});assert.equal((await access(id)).freemiumStartedAt,null);
-   await page.route('**/projects/access/trial',r=>r.abort());await button(page,'Начать 7 дней бесплатно').click();await page.getByRole('alert').filter({hasText:/./}).waitFor();
-   assert.equal((await access(id)).freemiumStartedAt,null);await page.unroute('**/projects/access/trial');
-   await button(page,'Начать 7 дней бесплатно').click();await page.getByRole('heading',{name:'Полная версия активна'}).waitFor();
-   state=await access(id);assert.equal(state.fullAccess,true);assert.equal(new Date(state.freemiumEndsAt)-new Date(state.freemiumStartedAt),7*86400000);
-   await button(page,'Продолжить').click();
-  }else{
-   await button(page,'Оформить подписку').waitFor();assert.equal(await button(page,'Оформить подписку').isDisabled(),true);
-   await button(page,'Продолжить с калькулятором').click();assert.equal((await access(id)).fullAccess,false);
-  }
-  await page.getByRole('heading',{name:'Текущее состояние квартиры'}).waitFor();await page.reload();
-  await page.getByRole('heading',{name:'Текущее состояние квартиры'}).waitFor();assert.deepEqual(errors,[]);
-  await page.close();
- }
- assert.deepEqual(groups.sort(),['A','B']);
- }finally{await browser.close();}
-});
+import {chromium,webkit} from 'playwright';
+import {registerAccount,installSession} from './auth-helper.mjs';
+for(const [engineName,engine] of Object.entries({chromium,webkit}))for(const [client,url] of [['web','http://127.0.0.1:5500'],['expo','http://localhost:8081']]){
+ test(`${engineName} ${client}: questionnaire before CP-01; direct CP-02; desired result without details`,{timeout:90000},async()=>{
+  const browser=await engine.launch();try{
+   const page=await browser.newPage({viewport:{width:390,height:844}});const account=await registerAccount();await installSession(page,account);
+   let creates=0,created;page.on('response',async r=>{if(r.url().endsWith('/projects/draft')&&r.ok()){creates++;created=await r.json();}});
+   const button=name=>page.getByRole('button',{name,exact:true});
+   const radio=name=>page.getByRole('radio',{name,exact:true});
+   await page.goto(url);await button('Создать проект').click();
+   await page.getByRole('heading',{name:'Расскажите о себе',exact:true}).waitFor();assert.equal(creates,0);assert.equal(await button('Продолжить').isDisabled(),true);
+   await radio('Нет').click();await radio('Я сам(а)').click();await radio('Планирую').click();await button('Продолжить').click();
+   await page.getByRole('heading',{name:'Об объекте',exact:true}).waitFor();assert.equal(creates,0);
+   await page.getByLabel('Площадь квартиры, м²',{exact:true}).fill('33');
+   await button('Назад').click();await page.getByRole('heading',{name:'Расскажите о себе',exact:true}).waitFor();
+   assert.equal(await radio('Нет').getAttribute(client==='web'?'checked':'aria-checked')!==null,true);
+   await button('Продолжить').click();assert.equal(await page.getByLabel('Площадь квартиры, м²',{exact:true}).inputValue(),'33');
+   await page.route('**/projects/draft',r=>r.abort());await button('Продолжить').click();await page.getByText(/Не удалось связаться|Не удалось подключиться|Failed to fetch|Load failed|Ваш ввод/).first().waitFor();
+   assert.equal(creates,0);await page.unroute('**/projects/draft');await button('Продолжить').click();
+   await page.getByRole('heading',{name:'Текущее состояние квартиры',exact:true}).waitFor();assert.equal(creates,1);
+   assert.equal(await page.getByText('Полная версия приложения',{exact:true}).count(),0);
+   await page.getByRole('button',{name:/^Старая отделка/}).click();await button('Продолжить').click();
+   await page.getByRole('heading',{name:'Желаемый результат ремонта',exact:true}).waitFor();assert.equal(await page.getByText('Что входит',{exact:false}).count(),0);
+   const a=await fetch('http://localhost:8080/api/projects/access',{headers:{Authorization:`Bearer ${account.token}`}}).then(r=>r.json());
+   assert.equal(a.questionnaireRequired,false);assert.equal(a.firstRenovation,false);assert.equal(a.renovationStage,'planning');assert.equal(a.freemiumStartedAt,null);assert.equal(a.offerShown,false);
+   assert.ok(created.projectId);
+   await page.goto(url);await button('Создать проект').click();await page.getByRole('heading',{name:'Расскажите о себе',exact:true}).waitFor();assert.equal(await button('Продолжить').isDisabled(),true);
+  }finally{await browser.close();}
+ });
+}

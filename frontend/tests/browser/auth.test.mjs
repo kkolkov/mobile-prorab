@@ -12,6 +12,13 @@ for(const [name,engine] of Object.entries({webkit,chromium}))test(`${name}: regi
   await page.getByLabel('Логин',{exact:true}).fill(login);await page.getByLabel('Пароль',{exact:true}).fill('Test-pass-123');
   assert.equal(await page.getByLabel('Пароль',{exact:true}).getAttribute('type'),'password');
   await page.screenshot({path:`/tmp/prorab-auth-${name}.png`,fullPage:true});
+  assert.equal(await page.getByRole('button',{name:'Создать аккаунт',exact:true}).isDisabled(),true);
+  await page.getByRole('link',{name:'Политика обработки персональных данных',exact:true}).click();
+  await page.getByText('Lorem ipsum dolor sit amet, consectetur adipiscing elit.',{exact:false}).waitFor();
+  await page.getByRole('button',{name:'Назад',exact:true}).click();
+  assert.equal(await page.getByLabel('Логин',{exact:true}).inputValue(),login);
+  assert.equal(await page.getByRole('button',{name:'Создать аккаунт',exact:true}).isDisabled(),true);
+  await page.getByRole('checkbox',{name:'Я согласен на обработку персональных данных'}).click();
   await page.getByRole('button',{name:'Создать аккаунт',exact:true}).click();await page.getByRole('heading',{name:'Мои проекты'}).waitFor();
   const token=await page.evaluate(()=>JSON.parse(localStorage.getItem('prorab.auth.v1')).token);
   const response=await fetch('http://localhost:8080/api/projects/draft',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({areaM2:47,name:'Общий проект аккаунта'})});assert.equal(response.status,200);
