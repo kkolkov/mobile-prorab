@@ -18,10 +18,11 @@ export default function Dashboard() {
   },[id]);
   useFocusEffect(useCallback(()=>{void load();},[load]));
   return <Screen title={p?.name??'Загружаем проект…'} home={()=>router.replace('/')}>
-    {p&&<><View style={styles.row}><View style={{flex:1}}><Body>Статус</Body><Heading>Планирование</Heading></View>
-      <View style={{flex:1}}><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
+    {p&&<>
       <Demo/>{p.estimateStatus==='stale'&&<Notice>Активная смета рассчитана по прежним параметрам. Новая смета применяется отдельно.</Notice>}
       <Heading>Бюджет</Heading><Body>{range(p.budgetMinRub,p.budgetMaxRub)}</Body><Heading>Срок</Heading><Body>{durationRange(p.durationMinDays,p.durationMaxDays)}</Body>
+      <View style={styles.row}><View style={{flex:1}}><Body>Статус</Body><Heading>Планирование</Heading></View>
+      <View style={{flex:1}}><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
       {p.budgetMinRub==null&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/>}
       <Heading>Инструменты проекта</Heading>{['План работ','Финансовый трекер','Трекер ремонта'].map(label=><Notice key={label}>{label}{'\n'}Раздел пока не реализован.</Notice>)}
     </>}<ErrorText message={error}/>{!!error&&<Button label="Повторить" disabled={busy} onPress={load}/>}

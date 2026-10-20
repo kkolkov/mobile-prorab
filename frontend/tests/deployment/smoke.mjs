@@ -38,6 +38,14 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     await page.getByRole('button',{name:'Продолжить',exact:true}).click();await page.locator('[data-value="comfort"]').click();
     await page.getByRole('button',{name:'Получить оценку',exact:true}).click();
     await page.getByText('4 мес. 10 дн. — 6 мес.',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Перейти в проект',exact:true}).click();
+    await page.getByRole('heading',{name:'Планирование',exact:true}).waitFor();
+    const durationBox=await page.getByText('4 мес. 10 дн. — 6 мес.',{exact:true}).boundingBox();
+    const statusBox=await page.getByText('Статус',{exact:true}).boundingBox();
+    const refineBox=await page.getByRole('button',{name:'Уточнить параметры проекта',exact:true}).boundingBox();
+    assert.ok(statusBox.y>=durationBox.y+durationBox.height);
+    assert.ok(refineBox.y>=durationBox.y+durationBox.height);
+
     await page.goto(base);await page.getByText('Продолжите ремонт или создайте новый проект.',{exact:true}).waitFor();
     await page.getByRole('button',{name:'Переименовать: Проверка размещения',exact:true}).click();
     await page.getByLabel('Название проекта',{exact:true}).fill('Проверка обновления Render');
