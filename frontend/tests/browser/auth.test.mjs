@@ -22,13 +22,13 @@ for(const [name,engine] of Object.entries({webkit,chromium}))test(`${name}: regi
   await page.getByRole('button',{name:'Создать аккаунт',exact:true}).click();await page.getByRole('heading',{name:'Мои проекты'}).waitFor();
   const token=await page.evaluate(()=>JSON.parse(localStorage.getItem('prorab.auth.v1')).token);
   const response=await fetch('http://localhost:8080/api/projects/draft',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({areaM2:47,name:'Общий проект аккаунта'})});assert.equal(response.status,200);
-  await page.reload();await page.getByRole('button',{name:/Общий проект аккаунта/}).waitFor();
+  await page.reload();await page.getByRole('button',{name:/^Общий проект аккаунта/}).waitFor();
   await page.getByRole('button',{name:'Выйти',exact:true}).click();await page.getByRole('heading',{name:'С возвращением'}).waitFor();
   await page.getByLabel('Логин',{exact:true}).fill(login);await page.getByLabel('Пароль',{exact:true}).fill('wrong-password');await page.getByRole('button',{name:'Войти',exact:true}).click();
   await page.getByRole('alert').filter({hasText:'Неверный логин или пароль'}).waitFor();assert.equal(await page.getByLabel('Логин',{exact:true}).inputValue(),login);
   await page.getByLabel('Пароль',{exact:true}).fill('Test-pass-123');await page.getByRole('button',{name:'Войти',exact:true}).click();await page.getByRole('heading',{name:'Мои проекты'}).waitFor();
   const second=await browser.newPage();await second.goto(front);await second.getByLabel('Логин',{exact:true}).fill(login);await second.getByLabel('Пароль',{exact:true}).fill('Test-pass-123');await second.getByRole('button',{name:'Войти',exact:true}).click();
-  await second.getByRole('button',{name:/Общий проект аккаунта/}).waitFor();
+  await second.getByRole('button',{name:/^Общий проект аккаунта/}).waitFor();
   const secondToken=await second.evaluate(()=>JSON.parse(localStorage.getItem('prorab.auth.v1')).token);
   await fetch('http://localhost:8080/api/auth/logout',{method:'POST',headers:{Authorization:`Bearer ${secondToken}`}});
   await second.getByRole('button',{name:'Выйти',exact:true}).click();await second.getByRole('heading',{name:'С возвращением'}).waitFor();

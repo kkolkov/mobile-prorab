@@ -1,5 +1,5 @@
 import { choices } from '../core/choices';
-import { Body, Check, Field, Heading, Select, Button } from '../components/ui';
+import { Body, Grid, Check, Field, Heading, Select, Button } from '../components/ui';
 import type { Apartment, Exterior, Kitchen, Room, SectionData } from '../core/types';
 import { numberError } from '../core/rules';
 
@@ -7,13 +7,13 @@ type Props<T>={value:T;onChange:(next:T)=>void;disabled:boolean};
 const labels={floor:'Пол',walls:'Стены',ceiling:'Потолок',doors:'Межкомнатные двери',demolition:'Демонтаж отделки',wallPreparation:'Подготовка стен',floorPreparation:'Подготовка пола',electrical:'Электрика'};
 export function ApartmentForm({value:a,onChange,disabled}:Props<Apartment>) {
   return <>
-    {(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Исходное состояние','Целевое состояние','Уровень ремонта'][i]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}
+    <Grid>{(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Исходное состояние','Целевое состояние','Уровень ремонта'][i]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
     <Field label="Площадь квартиры, м² — без балкона и лоджии" value={a.areaM2} onChange={v=>onChange({...a,areaM2:v})} numeric required disabled={disabled}/>
     <Field label="Высота потолков, м" value={a.ceilingHeight} onChange={v=>onChange({...a,ceilingHeight:v})} numeric scale={2} min={2} max={5} disabled={disabled} placeholder="Пусто — норматив калькулятора"/>
     <Heading>Общая отделка</Heading><Body>Для комнат, кухни и коридора. Индивидуальная отделка имеет приоритет. Санузлы используют отдельные нормативы.</Body>
-    {(['floor','walls','ceiling','doors'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}
+    <Grid>{(['floor','walls','ceiling','doors'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
     <Heading>Работы</Heading>
-    {(['demolition','wallPreparation','floorPreparation','electrical'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}
+    <Grid>{(['demolition','wallPreparation','floorPreparation','electrical'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
   </>;
 }
 export function RoomForm({value:r,onChange,disabled}:Props<Room>) {

@@ -7,7 +7,7 @@ import { api } from '../../core/api';
 import type { Project } from '../../core/types';
 import { startWizard } from '../../core/session';
 import { range, resumeStep } from '../../core/rules';
-import { Screen, Heading, Body, Button, Demo, Notice, ErrorText, styles } from '../../components/ui';
+import { Screen, Grid, Metric, Heading, Body, Button, Demo, Notice, ErrorText, styles } from '../../components/ui';
 export default function Dashboard() {
   const {id}=useLocalSearchParams<{id:string}>();
   const [p,setProject]=useState<Project|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
@@ -21,9 +21,9 @@ export default function Dashboard() {
   return <Screen title={p?.name??'Загружаем проект…'} home={()=>router.replace('/')}>
     {p&&<>
       <Demo/>{p.estimateStatus==='stale'&&<Notice>Активная смета рассчитана по прежним параметрам. Новая смета применяется отдельно.</Notice>}
-      <Heading>Бюджет</Heading><Body>{range(p.budgetMinRub,p.budgetMaxRub)}</Body><Heading>Срок</Heading><Body>{durationRange(p.durationMinDays,p.durationMaxDays)}</Body>
-      <View style={styles.row}><View style={{flex:1}}><Body>Статус</Body><Heading>Планирование</Heading></View>
-      <View style={{flex:1}}><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
+      <Grid><Metric label="Бюджет" value={range(p.budgetMinRub,p.budgetMaxRub)}/><Metric label="Срок" value={durationRange(p.durationMinDays,p.durationMaxDays)} tone="lavender"/></Grid>
+      <View style={styles.planning}><View><Body>Статус</Body><Heading>Планирование</Heading></View>
+      <View><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
       {p.budgetMinRub==null&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/>}
       <EstimateDetails estimate={p.estimateDetails}/><Heading>Инструменты проекта</Heading>{['План работ','Финансовый трекер','Трекер ремонта'].map(label=><Notice key={label}>{label}{'\n'}Раздел пока не реализован.</Notice>)}
     </>}<ErrorText message={error}/>{!!error&&<Button label="Повторить" disabled={busy} onPress={load}/>}

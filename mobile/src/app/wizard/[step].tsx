@@ -9,7 +9,7 @@ import { choices } from '../../core/choices';
 import { amount, autoName, range, updateNameArea, validArea } from '../../core/rules';
 import { wizard } from '../../core/session';
 import { emit } from '../../core/analytics';
-import { Screen, Button, Card, Field, Counter, ErrorText, Body, Heading, Demo, Notice } from '../../components/ui';
+import { Screen, Grid, Metric, Button, Card, Field, Counter, ErrorText, Body, Heading, Demo, Notice } from '../../components/ui';
 
 const titles=['','Об объекте','Текущее состояние квартиры','Желаемый результат ремонта','Параметры квартиры','Уровень ремонта','Предварительная оценка'];
 const descriptions:Record<string,string>={
@@ -64,7 +64,7 @@ export default function Wizard() {
     </>}
     {[2,3,5].includes(step)&&<>
       <Body>{step===2?'Определите исходное состояние объекта.':step===3?'До какого состояния хотите довести объект?':'Уровень влияет на стоимость, но не определяет перечень работ сам по себе.'}</Body>
-      {Object.entries(choices[selectedKey]).map(([key,label])=><Card key={key} title={label} description={descriptions[key]} selected={local[selectedKey]===key} disabled={busy} onPress={()=>change(selectedKey,key)}/>)}
+      <Grid>{Object.entries(choices[selectedKey]).map(([key,label])=><Card key={key} title={label} description={descriptions[key]} selected={local[selectedKey]===key} disabled={busy} onPress={()=>change(selectedKey,key)}/>)}</Grid>
       {step===5&&<Body>Уровень ремонта можно изменить позже.</Body>}
     </>}
     {step===4&&<>
@@ -77,8 +77,7 @@ export default function Wizard() {
     {step===6&&p&&<>
       <Heading>{p.name}</Heading><Demo/>
       {p.estimateStatus==='failed'?<Notice>Проект создан. Сейчас не удалось рассчитать стоимость и срок.</Notice>:null}
-      <Heading>Бюджет</Heading><Body>{range(p.budgetMinRub,p.budgetMaxRub)}</Body>
-      <Heading>Срок</Heading><Body>{durationRange(p.durationMinDays,p.durationMaxDays)}</Body>
+      <Grid><Metric label="Бюджет" value={range(p.budgetMinRub,p.budgetMaxRub)}/><Metric label="Срок" value={durationRange(p.durationMinDays,p.durationMaxDays)} tone="lavender"/></Grid>
       <EstimateDetails estimate={p.estimateDetails}/>
       <Notice>{p.areaM2} м² · комнаты {p.roomsCount??'—'} · санузлы {p.bathroomsCount}{'\n'}
         {choices.currentState[p.currentState as keyof typeof choices.currentState]} → {choices.targetState[p.targetState as keyof typeof choices.targetState]}{'\n'}
