@@ -133,6 +133,7 @@ public class RefinementService {
         checkVersion(p,version);RefinedEstimate candidate=readNullable(r.getCandidateJson());
         if(candidate==null||!candidate.id().equals(estimateId)||candidate.revision()!=r.getRevision()||!r.getCalculationStatus().equals("ready")||r.getCalculationProjectVersion()!=p.getVersion())throw new BusinessException("Применить можно только актуальный полный расчёт");
         r.setActiveEstimateJson(write(candidate));
+        p.setEstimateDetailsJson(write(candidate));
         p.setBudgetMinRub(candidate.total().min().intValueExact());p.setBudgetMaxRub(candidate.total().max().intValueExact());
         // No duration change: demo calculator does not implement a supported duration algorithm.
         p.setEstimateStatus(EstimateStatus.READY);p.setStatus(ProjectStatus.ACTIVE);p.setUpdatedAt(Instant.now());projects.saveAndFlush(p);
@@ -148,17 +149,14 @@ public class RefinementService {
     private ProjectRefinement prepare(Project p){
         var existing=refinements.findById(p.getProjectId());if(existing.isPresent())return existing.get();
         if(p.getCompletedStep()<5)throw new BusinessException("Сначала завершите создание проекта");
-        List<Room> rooms=new ArrayList<>();resize(rooms,p.getRoomsCount()==null?recommended(p.getAreaM2()):p.getRoomsCount());
-        for(int i=0;i<Objects.requireNonNullElse(p.getKitchensCount(),1);i++)rooms.add(room("kitchen","Кухня "+(i+1)));
-        for(int i=0;i<Objects.requireNonNullElse(p.getBathroomsCount(),1);i++)rooms.add(room("combined_bathroom","Санузел "+(i+1)));
-        Map<UUID,Kitchen> kitchens=new LinkedHashMap<>();rooms.stream().filter(r->r.type().equals("kitchen")).forEach(r->kitchens.put(r.id(),Kitchen.defaults()));
-        Apartment a=new Apartment(p.getCurrentState(),p.getTargetState(),p.getFinishLevel(),p.getAreaM2(),null,"unknown","unknown","unknown","unknown","unknown","unknown","unknown","unknown");
-        RefinementData d=new RefinementData(a,rooms,p.getRoomsCount()!=null,kitchens,new Exteriors("none",Exterior.defaults(),Exterior.defaults()),Set.of());
+        RefinementData d=new InitialRefinementData().from(p);
         ProjectRefinement r=new ProjectRefinement(p.getProjectId(),write(d));r.setCalculationProjectVersion(p.getVersion());
-        if(p.getBudgetMinRub()!=null&&p.getBudgetMaxRub()!=null){
+        if(p.getEstimateDetailsJson()!=null){
+            r.setActiveEstimateJson(p.getEstimateDetailsJson());
+        }else if(p.getBudgetMinRub()!=null&&p.getBudgetMaxRub()!=null){
             BigDecimal min=BigDecimal.valueOf(p.getBudgetMinRub()),max=BigDecimal.valueOf(p.getBudgetMaxRub());BigDecimal expected=min.add(max).divide(new BigDecimal("2"),0,RoundingMode.HALF_UP);
             var totals=new RefinedEstimate.Totals(min,max,expected,expected.multiply(new BigDecimal("1.1")).setScale(0,RoundingMode.HALF_UP));
-            r.setActiveEstimateJson(write(new RefinedEstimate(UUID.randomUUID(),-1,true,"legacy-demo","legacy-demo","legacy-demo",null,null,totals,null,null,p.getDurationMinDays(),p.getDurationMaxDays(),List.of(),List.of("Исходная оценка — заглушка; ожидаемая сумма взята как середина диапазона, резерв 10%. Разбивка исходной оценки отсутствует."))));
+            r.setActiveEstimateJson(write(new RefinedEstimate(UUID.randomUUID(),-1,true,"legacy-demo","legacy-demo","legacy-demo",null,null,totals,null,null,p.getDurationMinDays(),p.getDurationMaxDays(),List.of(),List.of("Исходная оценка — заглушка; ожидаемая сумма взята как середина диапазона, резерв 10%. Разбивка исходной оценки отсутствует."),null)));
         }
         return refinements.saveAndFlush(r);
     }
@@ -166,7 +164,7 @@ public class RefinementService {
         RefinementData d=read(r.getInputJson(),RefinementData.class);var active=readNullable(r.getActiveEstimateJson());
         String status=r.getCalculationStatus();if(r.getCalculationProjectVersion()!=p.getVersion())status="stale";
         var allocation=allocator.allocate(p.getProjectId(),d.apartment().areaM2(),d.rooms());
-        String message=switch(status){case "pending"->"Пересчитываем проект…";case "ready"->"Демонстрационный расчёт готов";case "failed"->"Не удалось рассчитать. Сохранённые данные доступны";case "incomplete"->"Проверьте площади и состав помещений";case "stale"->"Параметры изменились. Обновите расчёт";default->"Сохраните уточнения, чтобы получить демонстрационный расчёт";};
+        String message=switch(status){case "pending"->"Пересчитываем проект…";case "ready"->"Расчёт по справочнику готов";case "failed"->"Не удалось рассчитать. Сохранённые данные доступны";case "incomplete"->"Проверьте площади и состав помещений";case "stale"->"Параметры изменились. Обновите расчёт";default->"Сохраните уточнения, чтобы получить расчёт по справочнику";};
         return new RefinementResponse(mapper.toResponse(p),d,r.getRevision(),recommended(p.getAreaM2()),allocation,status,message,
                 p.getEstimateStatus()==EstimateStatus.STALE,Set.of("laminate","vinyl","parquet","tile","wallpaper","paint","plaster","stretch","drywall"),active,
                 status.equals("ready")?readNullable(r.getCandidateJson()):null);

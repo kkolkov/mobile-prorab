@@ -62,6 +62,10 @@ for(const [browserName,type] of Object.entries({webkit,chromium}))test(`${browse
   await page.getByRole('button',{name:'Продолжить',exact:true}).click();
   await page.getByRole('button',{name:'Посмотреть расчёт',exact:true}).click();
   await page.getByRole('heading',{name:'Сравнение сметы',exact:true}).waitFor();
+  await page.getByText('Из чего складывается оценка',{exact:true}).click();
+  await page.getByText('Черновые материалы:',{exact:false}).waitFor();
+  assert.ok(await page.locator('.estimate-details tbody tr').count()>0);
+  await page.getByText('Из чего складывается оценка',{exact:true}).click();
   await page.screenshot({path:'/tmp/prorab-refinement-'+browserName+'.png',fullPage:true});
   saved=await api(path);
   assert.equal(saved.data.exteriors.balcony.areaM2,null);assert.equal(saved.candidateEstimate.kitchen.expected,0);

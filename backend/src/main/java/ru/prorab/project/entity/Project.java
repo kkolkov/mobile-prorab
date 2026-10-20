@@ -28,6 +28,9 @@ public class Project {
     private Boolean redevelopment;
     @Enumerated(EnumType.STRING) private FinishLevel finishLevel;
     @Enumerated(EnumType.STRING) @Column(nullable = false) private EstimateStatus estimateStatus;
+    @Column(columnDefinition="text") private String estimateDetailsJson;
+    public String getEstimateDetailsJson(){return estimateDetailsJson;}
+    public void setEstimateDetailsJson(String value){estimateDetailsJson=value;}
     private Integer budgetMinRub;
     private Integer budgetMaxRub;
     private Integer durationMinDays;

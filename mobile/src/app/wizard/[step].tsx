@@ -1,3 +1,4 @@
+import {EstimateDetails} from '../../components/EstimateDetails';
 import {durationRange} from '../../core/display';
 import {answersComplete} from '../../onboarding/questions';
 import { useEffect, useRef, useState } from 'react';
@@ -78,6 +79,7 @@ export default function Wizard() {
       {p.estimateStatus==='failed'?<Notice>Проект создан. Сейчас не удалось рассчитать стоимость и срок.</Notice>:null}
       <Heading>Бюджет</Heading><Body>{range(p.budgetMinRub,p.budgetMaxRub)}</Body>
       <Heading>Срок</Heading><Body>{durationRange(p.durationMinDays,p.durationMaxDays)}</Body>
+      <EstimateDetails estimate={p.estimateDetails}/>
       <Notice>{p.areaM2} м² · комнаты {p.roomsCount??'—'} · санузлы {p.bathroomsCount}{'\n'}
         {choices.currentState[p.currentState as keyof typeof choices.currentState]} → {choices.targetState[p.targetState as keyof typeof choices.targetState]}{'\n'}
         {choices.finishLevel[p.finishLevel as keyof typeof choices.finishLevel]}</Notice>

@@ -38,6 +38,10 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     await page.getByRole('button',{name:'Продолжить',exact:true}).click();await page.locator('[data-value="comfort"]').click();
     await page.getByRole('button',{name:'Получить оценку',exact:true}).click();
     await page.getByText('4 мес. 10 дн. — 6 мес.',{exact:true}).waitFor();
+    await page.getByText('Из чего складывается оценка',{exact:true}).click();
+    await page.getByText('Черновые материалы:',{exact:false}).waitFor();
+    assert.ok(await page.locator('.estimate-details tbody tr').count()>0);
+    await page.getByText('Из чего складывается оценка',{exact:true}).click();
     await page.getByRole('button',{name:'Перейти в проект',exact:true}).click();
     await page.getByRole('heading',{name:'Планирование',exact:true}).waitFor();
     const durationBox=await page.getByText('4 мес. 10 дн. — 6 мес.',{exact:true}).boundingBox();
@@ -54,6 +58,8 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     await page.reload();await page.getByRole('button',{name:'Переименовать: Проверка обновления Render',exact:true}).waitFor();
     const saved=await page.evaluate(async()=>{const {token}=JSON.parse(localStorage.getItem('prorab.auth.v1'));return (await fetch('/api/projects',{headers:{Authorization:`Bearer ${token}`}})).json();});
     assert.equal(saved.length,1);assert.equal(saved[0].roomsCount,3);assert.equal(saved[0].kitchensCount,1);
+    assert.equal(saved[0].estimateDetails.algorithmVersion,'unit-pricing-1');
+    assert.equal(saved[0].budgetMinRub,saved[0].estimateDetails.total.min);
     assert.ok(apiOrigins.length > 0);
     assert.deepEqual([...new Set(apiOrigins)], [new URL(base).origin]);
     assert.deepEqual(errors, []);

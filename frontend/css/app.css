@@ -38,3 +38,10 @@ button.primary:disabled {
 .onboarding-question input { flex-shrink:0; }
 
 .auth-shell{max-width:480px;padding-top:72px}.auth-shell .brand{margin-bottom:40px}.auth-shell #auth-submit,.auth-shell #auth-toggle{width:100%;margin-top:20px}.auth-shell form{margin-top:28px}#account-bar:not([hidden]){max-width:720px;margin:12px auto 0;padding:0 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}#account-login{margin-right:auto;font-weight:650}#account-error{color:#b42318}@media(max-width:500px){.auth-shell{padding-top:38px}#account-bar button{font-size:13px;padding:10px}}
+
+.estimate-details { margin:18px 0; border:1px solid var(--line); border-radius:14px; padding:16px; background:var(--card); }
+.estimate-details summary { cursor:pointer; font-weight:700; }
+.estimate-details .table-scroll { overflow-x:auto; }
+.estimate-details table { border-collapse:collapse; width:100%; font-size:14px; }
+.estimate-details th,.estimate-details td { padding:10px; text-align:left; border-bottom:1px solid var(--line); }
+.estimate-details li { margin-bottom:8px; line-height:1.45; }

@@ -1,3 +1,4 @@
+import {estimateDetails} from './estimate-details.js';
 import {durationRange,projectsSubtitle} from './display.js';
 import {renameProject} from './rename-project.js';
 import {questionnaireHtml,bindQuestionnaire} from './onboarding/form.js';
@@ -21,7 +22,27 @@ function cp2(){renderScreen(app,layout(2,'Текущее состояние кв
 function cp3(){renderScreen(app,layout(3,'Желаемый результат ремонта',`<p>До какого состояния хотите довести объект?</p>${cards(target,'targetState')}`,'Продолжить',!state.local.targetState,true));bindCards();document.querySelector('#back').onclick=()=>{state.step=2;render()};document.querySelector('#primary').onclick=()=>saveStep(3,{targetState:state.local.targetState})}
 function cp4(){state.local.redevelopment??=false;renderScreen(app,layout(4,'Параметры квартиры',`<div class="field"><label>Количество комнат</label><div class="stepper"><button data-minus="k">−</button><strong id="k">${state.local.roomsCount??1}</strong><button data-plus="k">+</button></div></div><div class="field"><label>Количество санузлов</label><div class="stepper"><button data-minus="b">−</button><strong id="b">${state.local.bathroomsCount??1}</strong><button data-plus="b">+</button></div></div><div class="field"><label>Перепланировка</label>${cards({true:['Да','Демонтаж или возведение перегородок.'],false:['Нет','Без планируемой перепланировки.']},'redevelopment')}</div>`,'Продолжить',false,true));document.querySelectorAll('[data-minus],[data-plus]').forEach(b=>b.onclick=()=>{const k=b.dataset.minus||b.dataset.plus;const prop=k==='k'?'roomsCount':'bathroomsCount';state.local[prop]=Math.min(20,Math.max(1,(state.local[prop]??1)+(b.dataset.plus?1:-1)));render()});bindCards();document.querySelector('#back').onclick=()=>{state.step=3;render()};document.querySelector('#primary').onclick=()=>saveStep(4,{roomsCount:state.local.roomsCount||1,bathroomsCount:state.local.bathroomsCount||1,redevelopment:state.local.redevelopment==='true'||state.local.redevelopment===true})}
 function cp5(){renderScreen(app,layout(5,'Уровень ремонта',`<p>Уровень влияет на стоимость, но не определяет перечень работ сам по себе.</p>${cards(finish,'finishLevel')}<p class="muted">Уровень ремонта можно изменить позже.</p><div class="error">${state.error}</div>`,'Получить оценку',!state.local.finishLevel,true));bindCards();document.querySelector('#back').onclick=()=>{state.step=4;render()};document.querySelector('#primary').onclick=async()=>{state.loading=true;state.error='';render();try{const e=await api.saveStepAndEstimate(state.projectId,{finishLevel:state.local.finishLevel,version:state.project.version});setProject(e);state.step=6;state.local={...state.local,...e};state.loading=false;render()}catch(e){state.error=e.message;state.loading=false;render()}} }
-async function cp6(){renderScreen(app,layout(6,'Предварительная оценка',`<div class="summary"><div><span class="muted">Проект</span><div class="big">${escapeText(state.project.name)}</div></div><div><span class="muted">Бюджет</span><div class="big">${money(state.project.budgetMinRub)} — ${money(state.project.budgetMaxRub)} ₽</div></div><div><span class="muted">Срок</span><div class="big">${durationRange(state.project.durationMinDays,state.project.durationMaxDays)}</div></div></div><p>Демонстрационная оценка: используются тестовые цены и формулы.</p><button class="secondary" id="refine">Уточнить расчёт</button><div class="notice">Площадь ${state.project.areaM2} м² · комнаты ${state.project.roomsCount??'—'} · санузлы ${state.project.bathroomsCount}</div>`,'Перейти в проект',false,false));document.querySelector('#refine').onclick=goRefinement;document.querySelector('#primary').onclick=async()=>{try{const p=await api.activate(state.projectId,state.project.version);setProject(p);state.loading=false;state.step=7;render()}catch(e){state.error=e.message;render()}}}
+async function cp6(){
+ const p=state.project,failed=p.estimateStatus==='failed';
+ const budget=p.budgetMinRub==null||p.budgetMaxRub==null?'Пока не рассчитан':`${money(p.budgetMinRub)} — ${money(p.budgetMaxRub)} ₽`;
+ renderScreen(app,layout(6,'Предварительная оценка',`
+ ${failed?'<div class="notice">Проект создан. Сейчас не удалось рассчитать стоимость и срок. Проверьте площади и состав помещений в уточнении или повторите расчёт. Если ранее была оценка, ниже сохранены её значения.</div>':''}
+ <div class="summary"><div><span class="muted">Проект</span><div class="big">${escapeText(p.name)}</div></div>
+ <div><span class="muted">Бюджет</span><div class="big">${budget}</div></div>
+ <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>
+ <p>Ориентировочная оценка. Базовые цены условные, срок демонстрационный.</p>${estimateDetails(p.estimateDetails)}
+ ${failed?`<button class="secondary" id="retry-estimate" ${state.loading?'disabled':''}>Повторить расчёт</button>`:''}
+ <button class="secondary" id="refine">Уточнить расчёт</button>
+ <div class="notice">Площадь ${p.areaM2} м² · комнаты ${p.roomsCount??'—'} · санузлы ${p.bathroomsCount}</div>
+ <div class="error" role="alert">${escapeText(state.error)}</div>`,'Перейти в проект',false,false));
+ document.querySelector('#refine').onclick=goRefinement;
+ if(failed)document.querySelector('#retry-estimate').onclick=async()=>{
+  if(state.loading)return;state.loading=true;state.error='';render();
+  try{setProject(await api.estimate(state.projectId,state.project.version));}catch(e){state.error=e.message;}
+  finally{state.loading=false;render();}
+ };
+ document.querySelector('#primary').onclick=async()=>{try{setProject(await api.activate(state.projectId,state.project.version));state.loading=false;state.step=7;render();}catch(e){state.error=e.message;render();}};
+}
 function money(n){return Number(n||0).toLocaleString('ru-RU')}
 function escapeText(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function goRefinement(){
@@ -31,12 +52,12 @@ async function goRefinement(){
 function db01(){
  const p=state.project;
  renderScreen(app,`<div class="top"><span class="brand">Мобильный прораб</span><span class="step">Проект</span></div><h1>${escapeText(p.name)}</h1>
- <div class="notice">Демонстрационная оценка. Используются тестовые цены и формулы.</div>
+ <div class="notice">Ориентировочная оценка. Базовые цены условные, срок демонстрационный.</div>
  ${p.estimateStatus==='stale'?'<div class="notice">Активная смета рассчитана по прежним параметрам. Уточнённая смета применяется отдельно.</div>':''}
  <div class="summary"><div><span class="muted">Бюджет</span><div class="big">${p.budgetMinRub?money(p.budgetMinRub)+' — '+money(p.budgetMaxRub)+' ₽':'Пока не рассчитан'}</div></div>
  <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>
  <div class="project-planning"><div><span class="muted">Статус</span><h2>Планирование</h2></div><button class="primary" id="refine">Уточнить параметры проекта</button></div>
- <h2>Инструменты проекта</h2><p>План работ · финансовый трекер · трекер ремонта</p><p class="muted">Эти разделы пока не реализованы.</p><div class="error" role="alert">${escapeText(state.error)}</div>`);
+ ${estimateDetails(state.project.estimateDetails)}<h2>Инструменты проекта</h2><p>План работ · финансовый трекер · трекер ремонта</p><p class="muted">Эти разделы пока не реализованы.</p><div class="error" role="alert">${escapeText(state.error)}</div>`);
  document.querySelector('#refine').onclick=goRefinement;
 }
 export async function start(){

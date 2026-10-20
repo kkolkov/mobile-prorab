@@ -1,2 +1,2 @@
 package ru.prorab.estimate.dto;
-public record EstimateResult(int budgetMinRub, int budgetMaxRub, int durationMinDays, int durationMaxDays) {}
+public record EstimateResult(int budgetMinRub, int budgetMaxRub, int durationMinDays, int durationMaxDays, ru.prorab.refinement.dto.RefinedEstimate details) {}

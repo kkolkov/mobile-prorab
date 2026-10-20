@@ -27,8 +27,9 @@ class RefinementApiTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
-    ru.prorab.refinement.service.DemoRefinementCalculator demo;
+    ru.prorab.pricing.service.UnitPriceCalculator calculator;
     private JsonNode call(String method,String url,Object body,int status)throws Exception{
         var req=switch(method){case "GET"->get(url);case "PUT"->put(url);default->post(url);};
         if(body!=null)req.contentType("application/json").content(json.writeValueAsString(body));
@@ -48,8 +49,26 @@ class RefinementApiTest {
         do{state=call("GET",url,null,200);if(!state.get("calculationStatus").asText().equals("pending"))break;Thread.sleep(20);}while(System.nanoTime()<deadline);
         assertEquals("ready",state.get("calculationStatus").asText(),state.toString());return state;
     }
+    @Test void legacyProjectKeepsItsBudgetAndCanExplicitlyUpgradeToUnitPricing()throws Exception{
+        String url=create();String id=url.split("/")[3];
+        jdbc.update("update projects set estimate_details_json=null, budget_min_rub=100000, budget_max_rub=200000 where project_id=?",UUID.fromString(id));
+        JsonNode old=call("GET",url,null,200);
+        assertEquals("legacy-demo",old.at("/activeEstimate/pricingVersion").asText());
+        assertEquals(100000,old.at("/project/budgetMinRub").asInt());
+        assertTrue(old.at("/activeEstimate/details").isNull());
+        call("POST",url+"/calculate",Map.of("version",old.at("/project/version").asLong()),200);
+        JsonNode candidate=ready(url);
+        assertEquals(100000,candidate.at("/project/budgetMinRub").asInt());
+        assertEquals("unit-pricing-1",candidate.at("/candidateEstimate/algorithmVersion").asText());
+        call("POST",url+"/apply",Map.of("version",candidate.at("/project/version").asLong(),"estimateId",candidate.at("/candidateEstimate/id").asText()),200);
+        JsonNode reloaded=call("GET",url,null,200);
+        assertEquals(candidate.get("candidateEstimate"),reloaded.get("activeEstimate"));
+        assertEquals(reloaded.get("activeEstimate"),reloaded.at("/project/estimateDetails"));
+    }
     @Test void preparationIsIdempotentKitchenAvailableFirstAndOpeningDoesNotRefine()throws Exception{
         String url=create();JsonNode a=call("GET",url,null,200),b=call("GET",url,null,200);
+        assertEquals(a.at("/project/estimateDetails"),a.get("activeEstimate"));
+        assertTrue(a.at("/activeEstimate/details/lines").size()>0);
         assertEquals(a.get("data"),b.get("data"));assertEquals(4,a.at("/data/rooms").size());assertEquals(1,a.at("/data/kitchens").size());assertEquals(0,a.at("/data/completedSections").size());
         JsonNode unchanged=save(url,a,"kitchen",a.at("/data/kitchens"));assertEquals(0,unchanged.get("revision").asInt());assertEquals("not_requested",unchanged.get("calculationStatus").asText());
     }
@@ -59,7 +78,7 @@ class RefinementApiTest {
         JsonNode current=ready(url);assertEquals(1,current.get("revision").asLong());assertTrue(current.at("/candidateEstimate/demonstration").asBoolean());
         JsonNode noop=save(url,current,"apartment",current.at("/data/apartment"));assertEquals(current.at("/candidateEstimate/id"),noop.at("/candidateEstimate/id"));
         Map<String,Object> apply=Map.of("version",current.at("/project/version").asLong(),"estimateId",current.at("/candidateEstimate/id").asText());
-        JsonNode applied=call("POST",url+"/apply",apply,200);assertEquals(current.at("/candidateEstimate/total/min").asInt(),applied.at("/project/budgetMinRub").asInt());
+        JsonNode applied=call("POST",url+"/apply",apply,200);assertEquals(current.get("candidateEstimate"),applied.at("/project/estimateDetails"));assertEquals(current.at("/candidateEstimate/total/min").asInt(),applied.at("/project/budgetMinRub").asInt());
         assertEquals(original.at("/project/durationMinDays"),applied.at("/project/durationMinDays"));
         assertEquals(applied.at("/project/version"),call("POST",url+"/apply",apply,200).at("/project/version"));
     }
@@ -103,7 +122,7 @@ class RefinementApiTest {
 
     @Test void failedCalculationKeepsInputsAndActiveEstimateAndRetryRecovers()throws Exception{
         String url=create();JsonNode original=call("GET",url,null,200);
-        org.mockito.Mockito.doThrow(new IllegalStateException("Simulated calculator outage")).when(demo)
+        org.mockito.Mockito.doThrow(new IllegalStateException("Simulated calculator outage")).when(calculator)
                 .calculate(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyLong(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
         ObjectNode a=original.at("/data/apartment").deepCopy();a.put("ceilingHeight",3);
         try{
@@ -112,9 +131,9 @@ class RefinementApiTest {
             assertEquals("failed",failed.get("calculationStatus").asText());
             assertEquals(3,failed.at("/data/apartment/ceilingHeight").asInt());
             assertEquals(original.at("/project/budgetMinRub"),failed.at("/project/budgetMinRub"));
-            org.mockito.Mockito.reset(demo);
+            org.mockito.Mockito.reset(calculator);
             call("POST",url+"/calculate",Map.of("version",failed.at("/project/version").asLong()),200);
             ready(url);
-        }finally{org.mockito.Mockito.reset(demo);}
+        }finally{org.mockito.Mockito.reset(calculator);}
     }
 }

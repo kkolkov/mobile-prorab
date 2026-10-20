@@ -53,6 +53,9 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     await button(page,'Увеличить: Количество комнат').click();await button(page,'Увеличить: Количество комнат').click();
     await button(page,'Продолжить').click();await button(page,'Комфорт').click();await button(page,'Получить оценку').click();
     await page.getByRole('heading',{name:'Предварительная оценка',exact:true}).waitFor();
+    await button(page,'Из чего складывается оценка').click();
+    await page.getByText('Черновые материалы:',{exact:false}).waitFor();
+    await button(page,'Скрыть состав оценки').click();
     await button(page,'Перейти в проект').click();await button(page,'Уточнить параметры проекта').click();
     await button(page,'Кухня и техника').click();await select(page,'Гарнитур','Оставить существующий');
     for(const label of ['Плита / варочная панель','Отдельный духовой шкаф','Холодильник','Вытяжка','Посудомоечная машина'])await page.getByRole('checkbox',{name:label,exact:true}).click();

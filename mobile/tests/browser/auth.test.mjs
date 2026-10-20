@@ -19,7 +19,7 @@ test('Expo registration, reload, logout and same account in web share projects a
   const a=await page.evaluate(()=>JSON.parse(localStorage.getItem('prorab.auth.v1')));
   const draft=await fetch('http://localhost:8080/api/projects/draft',{method:'POST',headers:{Authorization:`Bearer ${a.token}`,'Content-Type':'application/json'},body:JSON.stringify({areaM2:55,name:'Проект с телефона'})});assert.equal(draft.status,200);
   await page.reload();await page.getByRole('button',{name:'Проект с телефона',exact:true}).waitFor();
-  const web=await browser.newPage();await web.goto('http://127.0.0.1:5500/');await web.getByLabel('Логин',{exact:true}).fill(login);await web.getByLabel('Пароль',{exact:true}).fill('Test-pass-123');await web.getByRole('button',{name:'Войти',exact:true}).click();await web.getByRole('button',{name:/Проект с телефона/}).waitFor();
+  const web=await browser.newPage();await web.goto('http://127.0.0.1:5500/');await web.getByLabel('Логин',{exact:true}).fill(login);await web.getByLabel('Пароль',{exact:true}).fill('Test-pass-123');await web.getByRole('button',{name:'Войти',exact:true}).click();await web.getByRole('button',{name:/^Проект с телефона/}).waitFor();
   const b=await web.evaluate(()=>JSON.parse(localStorage.getItem('prorab.auth.v1')));assert.equal(a.userId,b.userId);assert.notEqual(a.token,b.token);
   async function access(token){const response=await fetch('http://localhost:8080/api/projects/access',{headers:{Authorization:`Bearer ${token}`}});assert.equal(response.status,200);return response.json();}
   assert.equal((await access(a.token)).userGroup,(await access(b.token)).userGroup);

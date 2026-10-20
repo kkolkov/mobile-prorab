@@ -21,9 +21,11 @@ public class ProjectService {
     private final ProjectRepository repository;
     private final ProjectMapper mapper;
     private final EstimateService estimateService;
+    private final ru.prorab.pricing.service.EstimateSnapshots estimateSnapshots;
     private final ru.prorab.refinement.repository.RefinementRepository refinements;
 
-    public ProjectService(ProjectRepository repository, ProjectMapper mapper, EstimateService estimateService, ru.prorab.refinement.repository.RefinementRepository refinements, ru.prorab.onboarding.service.AccessService access) {
+    public ProjectService(ProjectRepository repository, ProjectMapper mapper, EstimateService estimateService, ru.prorab.refinement.repository.RefinementRepository refinements, ru.prorab.onboarding.service.AccessService access, ru.prorab.pricing.service.EstimateSnapshots estimateSnapshots) {
+        this.estimateSnapshots=estimateSnapshots;
         this.repository = repository; this.mapper = mapper; this.estimateService = estimateService; this.refinements = refinements; this.access = access;
     }
 
@@ -135,6 +137,7 @@ public class ProjectService {
     private void calculate(Project p) {
         try {
             EstimateResult e = estimateService.calculate(p);
+            p.setEstimateDetailsJson(estimateSnapshots.write(e.details()));
             p.setBudgetMinRub(e.budgetMinRub()); p.setBudgetMaxRub(e.budgetMaxRub());
             p.setDurationMinDays(e.durationMinDays()); p.setDurationMaxDays(e.durationMaxDays());
             p.setEstimateStatus(EstimateStatus.READY);

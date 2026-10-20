@@ -1,3 +1,4 @@
+import {EstimateDetails} from '../../components/EstimateDetails';
 import {durationRange} from '../../core/display';
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
@@ -24,7 +25,7 @@ export default function Dashboard() {
       <View style={styles.row}><View style={{flex:1}}><Body>Статус</Body><Heading>Планирование</Heading></View>
       <View style={{flex:1}}><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
       {p.budgetMinRub==null&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/>}
-      <Heading>Инструменты проекта</Heading>{['План работ','Финансовый трекер','Трекер ремонта'].map(label=><Notice key={label}>{label}{'\n'}Раздел пока не реализован.</Notice>)}
+      <EstimateDetails estimate={p.estimateDetails}/><Heading>Инструменты проекта</Heading>{['План работ','Финансовый трекер','Трекер ремонта'].map(label=><Notice key={label}>{label}{'\n'}Раздел пока не реализован.</Notice>)}
     </>}<ErrorText message={error}/>{!!error&&<Button label="Повторить" disabled={busy} onPress={load}/>}
   </Screen>;
 }

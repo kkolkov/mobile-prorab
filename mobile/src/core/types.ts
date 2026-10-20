@@ -1,5 +1,6 @@
 export type Numeric = number | string | null;
 export interface Project {
+  estimateDetails?: Estimate | null;
   projectId: string; status: 'draft' | 'active'; completedStep: number;
   name: string; nameSource: 'auto' | 'user'; areaM2: number; address: string | null;
   currentState: string | null; targetState: string | null; finishLevel: string | null;
@@ -37,7 +38,12 @@ export interface Draft<K extends Section = Section> {
 }
 export type Drafts = { [K in Section]?: Draft<K> };
 export interface Totals { min: number; max: number; expected: number; withReserve: number }
+export interface CostDetails {
+ roughMaterials: number; finishMaterials: number; labor: number;
+ lines: {section:string;name:string;priceCode:string;unit:string;quantity:number;unitPriceRub:number;coefficient:number;amountRub:number;source:string;priceDate:string}[];
+}
 export interface Estimate {
+  details?: CostDetails | null;
   id: string; total: Totals; repair: Totals | null; kitchen: Totals | null;
   balconyIncluded: number; loggiaIncluded: number; reasons: string[]; assumptions: string[];
   pricingVersion: string; algorithmVersion: string;
