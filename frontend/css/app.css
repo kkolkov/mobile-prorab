@@ -149,3 +149,8 @@ progress.over-budget { accent-color:#b3261e; }
 .execution-shell select { width:100%;min-height:56px;padding:14px;border:1px solid #9cae9f;border-radius:14px;background:var(--card);color:var(--accent); }
 .execution-shell details { margin-top:20px; }.execution-shell summary { cursor:pointer; }
 .gantt-row { grid-template-columns:180px 1fr; }.gantt-axis { margin-left:180px; }
+
+/* Project deletion confirmation */
+dialog {border:1px solid #d6ded5;border-radius:24px;padding:28px;max-width:520px;width:calc(100% - 40px);background:#faf9f5;color:#263c31;box-sizing:border-box;box-shadow:0 20px 70px #263c3133;}
+dialog::backdrop {background:#1f302d66;}
+dialog .actions {position:static;display:flex;gap:12px;flex-wrap:wrap;}

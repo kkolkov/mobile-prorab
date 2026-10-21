@@ -7,10 +7,10 @@ type Props<T>={value:T;onChange:(next:T)=>void;disabled:boolean};
 const labels={floor:'Пол',walls:'Стены',ceiling:'Потолок',doors:'Межкомнатные двери',demolition:'Демонтаж отделки',wallPreparation:'Подготовка стен',floorPreparation:'Подготовка пола',electrical:'Электрика'};
 export function ApartmentForm({value:a,onChange,disabled}:Props<Apartment>) {
   return <>
-    <Grid>{(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Исходное состояние','Целевое состояние','Уровень ремонта'][i]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
+    <Grid>{(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Исходное состояние','Целевое состояние','Уровень ремонта'][i]} value={a[key]} options={choices[key]} disabledOptions={key==='targetState'?['fully_furnished']:[]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
     <Field label="Площадь квартиры, м² — без балкона и лоджии" value={a.areaM2} onChange={v=>onChange({...a,areaM2:v})} numeric required disabled={disabled}/>
     <Field label="Высота потолков, м" value={a.ceilingHeight} onChange={v=>onChange({...a,ceilingHeight:v})} numeric scale={2} min={2} max={5} disabled={disabled} placeholder="Пусто — норматив калькулятора"/>
-    <Heading>Общая отделка</Heading><Body>Для комнат, кухни и коридора. Индивидуальная отделка имеет приоритет. Санузлы используют отдельные нормативы.</Body>
+    <Heading>Общая отделка</Heading><Select label="Нужна перепланировка?" value={String(a.redevelopment??false)} options={{true:'Да',false:'Нет'}} onChange={v=>onChange({...a,redevelopment:v==='true'})} disabled={disabled}/><Body>Для комнат, кухни и коридора. Индивидуальная отделка имеет приоритет. Санузлы используют отдельные нормативы.</Body>
     <Grid>{(['floor','walls','ceiling','doors'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
     <Heading>Работы</Heading>
     <Grid>{(['demolition','wallPreparation','floorPreparation','electrical'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
@@ -19,7 +19,7 @@ export function ApartmentForm({value:a,onChange,disabled}:Props<Apartment>) {
 export function RoomForm({value:r,onChange,disabled}:Props<Room>) {
   const inherit=['combined_bathroom','bathroom','toilet'].includes(r.type)?'Норматив санузла':['living','kitchen','corridor'].includes(r.type)?'Наследовать общую отделку':'Норматив помещения';
   return <><Select label="Тип помещения" value={r.type} options={choices.type} onChange={v=>onChange({...r,type:v})} disabled={disabled}/>
-    <Field label="Название помещения" value={r.name} onChange={v=>onChange({...r,name:v})} disabled={disabled}/>
+    <Field label="Название помещения · необязательно" value={r.name} onChange={v=>onChange({...r,name:v})} disabled={disabled}/>
     <Field label="Площадь помещения, м²" value={r.areaM2} onChange={v=>onChange({...r,areaM2:v})} numeric disabled={disabled}/>
     {(['floor','walls','ceiling'] as const).map(key=><Select key={key} label={labels[key]} value={r[key]} options={{inherit,...choices[key]}} onChange={v=>onChange({...r,[key]:v})} disabled={disabled}/>)}
   </>;
@@ -53,7 +53,7 @@ export function ExteriorsForm({value:e,onChange,disabled}:Props<SectionData['ext
     {(['balcony','loggia'] as const).filter(key=>e.presence===key||e.presence==='both').map(key=><ExteriorForm key={key} kind={key} value={e[key]} onChange={v=>onChange({...e,[key]:v})} disabled={disabled}/>)}</>;
 }
 export function roomError(room:Room) {
-  return !room.name.trim()?'Укажите название помещения':numberError(room.areaM2);
+  return room.name.length>100?'Название: не более 100 символов':numberError(room.areaM2);
 }
 export function sectionError<K extends keyof SectionData>(key:K,value:SectionData[K]):string {
   if(key==='apartment') {

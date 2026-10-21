@@ -15,7 +15,10 @@ for(const [engine,type] of Object.entries({chromium,webkit}))for(const mobile of
   await button('Задать начало ремонта').click();
   await page.getByLabel(mobile?'Дата начала ремонта (ГГГГ-ММ-ДД)':'Дата начала ремонта',{exact:true}).fill('2026-01-01');await save();
   await button('Показать списком').waitFor();let s=await api(path+'/execution');assert.equal(s.totalDays,54);assert.equal(s.data.tasks.length,4);
-  const end=s.forecastEnd;await button('Перенести').first().click();await page.getByLabel('Добавить дней',{exact:true}).fill('3');await page.getByLabel('Причина переноса — необязательно',{exact:true}).fill('Доставка материалов');await save();await button('Показать списком').waitFor();
+  await button('Изменить дату начала').first().click();
+  await page.getByLabel(mobile?'Дата начала ремонта (ГГГГ-ММ-ДД)':'Новая дата начала этапа',{exact:true}).fill('2025-12-30');await save();
+  s=await api(path+'/execution');assert.equal(s.data.startDate,'2025-12-30');assert.equal(s.data.tasks[0].baselineStart,'2026-01-01');assert.equal(s.totalDays,54);
+  const end=s.forecastEnd;await button('Продлить этап').first().click();await page.getByLabel('Добавить дней',{exact:true}).fill('3');await page.getByLabel('Причина переноса — необязательно',{exact:true}).fill('Доставка материалов');await save();await button('Показать списком').waitFor();
   s=await api(path+'/execution');assert.equal(Date.parse(s.forecastEnd)-Date.parse(end),3*86400000);
   await button('Завершить этап').click();await page.getByLabel(mobile?'Дата завершения этапа (ГГГГ-ММ-ДД)':'Дата завершения этапа',{exact:true}).fill('2026-01-20');await save();await button('Показать списком').waitFor();s=await api(path+'/execution');assert.equal(s.progressPercent,25);
   await button('Финансы').click();await button('Добавить расход').click();await page.getByLabel('Название расхода',{exact:true}).fill('Штукатурка <test>');await page.getByLabel('Сумма, ₽',{exact:true}).fill('1234.50');

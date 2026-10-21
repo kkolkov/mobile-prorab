@@ -20,6 +20,7 @@ test('Insufficient area keeps draft, shows no fake zero budget, allows retry and
   assert.ok(!(await page.locator('#app').innerText()).includes('0 — 0 ₽'));
   const response=page.waitForResponse(r=>r.url().includes('/estimate?'));
   await page.getByRole('button',{name:'Повторить расчёт',exact:true}).click();assert.equal((await response).status(),200);
+  await page.getByRole('alert').filter({hasText:'Повторный расчёт не выполнен'}).waitFor();
   await page.getByRole('button',{name:'Перейти в проект',exact:true}).click();
   await page.getByRole('heading',{name:'Планирование',exact:true}).waitFor();
  }finally{await browser.close();}

@@ -31,7 +31,7 @@ export default function ExecutionScreen(){
   {s?.newerEstimate&&<Notice>В проекте применена новая смета.<Button label="Обновить план из сметы" secondary disabled={busy} onPress={()=>void run(async()=>{const p=await api.get(id);change({action:'sync',caption:'Обновить план',estimateId:p.estimateDetails?.id});})}/></Notice>}
   {form&&<View style={{padding:18,borderRadius:16,backgroundColor:palette.sand,gap:12}}><Heading>{form.caption}</Heading>
    {['expense','edit-expense'].includes(form.action)&&<>{input('title','Название расхода')}{input('amount','Сумма, ₽',true)}<Select label="Категория" value={form.category??'rough'} options={categories} onChange={v=>change({...form,category:v})} disabled={busy}/>{input('date','Дата расхода (ГГГГ-ММ-ДД)')}<Select label="Этап ремонта" value={form.taskId??''} options={{'':'Без привязки',...Object.fromEntries(tasks.map(t=>[t.id,t.title]))}} onChange={v=>change({...form,taskId:v})} disabled={busy}/></>}
-   {form.action==='start'&&input('date','Дата начала ремонта (ГГГГ-ММ-ДД)')}
+   {['start','reschedule'].includes(form.action)&&input('date','Дата начала ремонта (ГГГГ-ММ-ДД)')}
    {form.action==='shift'&&<>{input('days','Добавить дней',true)}{input('reason','Причина переноса — необязательно')}</>}
    {form.action==='complete'&&<>{input('date','Дата завершения этапа (ГГГГ-ММ-ДД)')}{input('reason','Комментарий — необязательно')}</>}
    {form.action==='remove-expense'&&<Body>Удалить этот расход из фактических затрат?</Body>}
@@ -49,7 +49,8 @@ export default function ExecutionScreen(){
     </View></ScrollView>}
     {tasks.map(t=><View key={t.id} style={{padding:18,borderWidth:1,borderColor:palette.line,borderRadius:16,gap:10}}><Heading>{t.title}</Heading><Body>{statuses[t.status]} · {date(t.startDate)} — {date(t.endDate)}{'\n'}Первоначально: {date(t.baselineStart)} — {date(t.baselineEnd)}{'\n'}Потрачено на этап: {rub(s.data.expenses.filter(e=>e.taskId===t.id).reduce((n,e)=>n+e.amount,0))}</Body>
      {t.status==='in_progress'&&<Button label="Завершить этап" disabled={busy} onPress={()=>change({action:'complete',caption:'Завершение этапа',taskId:t.id,date:today(),reason:''})}/>}
-     {t.status!=='completed'&&<Button label="Перенести" secondary disabled={busy} onPress={()=>change({action:'shift',caption:'Перенос этапа',taskId:t.id,days:'3',reason:''})}/>}
+     {t.status!=='completed'&&<Button label="Изменить дату начала" secondary disabled={busy} onPress={()=>change({action:'reschedule',caption:'Изменить дату начала этапа',taskId:t.id,date:t.startDate})}/>}
+     {t.status!=='completed'&&<Button label="Продлить этап" secondary disabled={busy} onPress={()=>change({action:'shift',caption:'Перенос этапа',taskId:t.id,days:'3',reason:''})}/>}
      <Button label="Добавить расход" secondary disabled={busy} onPress={()=>expense(t.id)}/>
     </View>)}
    </>}

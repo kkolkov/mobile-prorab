@@ -1,3 +1,4 @@
+import {roomName} from '../../refinement/room-name';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -9,7 +10,7 @@ import { draftsFor } from '../../core/session';
 import { amount, clone, emptyRoom, parseNumbers } from '../../core/rules';
 import { emit } from '../../core/analytics';
 import type { Draft, Room, Section, SectionData, Snapshot } from '../../core/types';
-import { Screen, Button, Card, Select, Body, Heading, Demo, ErrorText, Notice, Confirm, styles } from '../../components/ui';
+import { Screen, Button, Card, Select, Body, Demo, ErrorText, Notice, Confirm } from '../../components/ui';
 import { ApartmentForm, ExteriorsForm, KitchenForm, RoomForm, roomError, sectionError } from '../../refinement/forms';
 import { Comparison } from '../../refinement/Comparison';
 
@@ -50,7 +51,7 @@ export default function Refinement() {
   function open<K extends Section>(key:K) {
     if(!snapshot)return;
     if(!drafts[key]) {
-      const sectionsData:SectionData={apartment:snapshot.data.apartment,rooms:{rooms:snapshot.data.rooms,roomCountManual:snapshot.data.roomCountManual},kitchen:snapshot.data.kitchens,exteriors:snapshot.data.exteriors};
+      const sectionsData:SectionData={apartment:{...snapshot.data.apartment,redevelopment:snapshot.data.apartment.redevelopment??snapshot.project.redevelopment},rooms:{rooms:snapshot.data.rooms,roomCountManual:snapshot.data.roomCountManual},kitchen:snapshot.data.kitchens,exteriors:snapshot.data.exteriors};
       const draft:Draft<K>={data:clone(sectionsData[key]),version:snapshot.project.version,confirmedRemovals:[]};
       // Key and value are paired here; retain their association in the session map.
       Object.assign(drafts,{[key]:draft});
@@ -61,20 +62,16 @@ export default function Refinement() {
   function change<K extends Section>(key:K,data:SectionData[K]) {const d=drafts[key];if(d)d.data=data;redraw(n=>n+1);}
   function exit(){if(!busy)router.replace(`/project/${id}`);}
   function back(){if(room)setRoom(null);else if(view==='menu')exit();else setView('menu');setError('');}
-  function newRoom():Room {return {id:Crypto.randomUUID(),name:'Новое помещение',type:'living',areaM2:null,floor:'inherit',walls:'inherit',ceiling:'inherit',automatic:false};}
-  function addLiving() {
-    const d=drafts.rooms!.data;
-    change('rooms',{rooms:[...d.rooms,{...newRoom(),name:`Комната ${d.rooms.filter(r=>r.type==='living').length+1}`}],roomCountManual:true});
-  }
+  function newRoom():Room {return {id:Crypto.randomUUID(),name:'',type:'living',areaM2:null,floor:'inherit',walls:'inherit',ceiling:'inherit',automatic:false};}
   function removeRoom(r:Room) {
     const d=drafts.rooms!;
-    if(r.type==='living'&&d.data.rooms.filter(x=>x.type==='living').length<=1){setError('Нужна хотя бы одна жилая комната');return;}
     const remove=()=>{d.confirmedRemovals.push(r.id);change('rooms',{rooms:d.data.rooms.filter(x=>x.id!==r.id),roomCountManual:r.type==='living'?true:d.data.roomCountManual});};
     if(!emptyRoom(r)||r.type==='kitchen')setConfirmation({message:`Удалить «${r.name}»${r.type==='kitchen'?' вместе с оснащением кухни':''}?`,action:remove});else remove();
   }
   function doneRoom() {
     if(!room)return;const invalid=roomError(room);if(invalid){setError(invalid);return;}
     const d=drafts.rooms!,before=d.data.rooms.find(r=>r.id===room.id),edited=parseNumbers(room);
+    edited.name=roomName(edited,d.data.rooms,choices.type);
     const done=()=>{
       if(!before||JSON.stringify({...before,automatic:false})!==JSON.stringify({...edited,automatic:false}))edited.automatic=false;
       const rooms=before?d.data.rooms.map(r=>r.id===edited.id?edited:r):[...d.data.rooms,edited];
@@ -109,7 +106,7 @@ export default function Refinement() {
     {!snapshot&&<><Body>Загружаем параметры проекта…</Body>{!!error&&<Button label="Повторить загрузку" onPress={load}/>}</>}
     {snapshot&&view==='menu'&&<>
       <Body>Выберите, какие данные хотите уточнить</Body>
-      {(Object.entries(sections) as [Section,[string,string]][]).map(([key,[label,description]])=><Card key={key} title={label} description={`${description}\n${snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}${drafts[key]?' · Есть несохранённый ввод':''}`} onPress={()=>open(key)} disabled={busy}/>)}
+      {(Object.entries(sections) as [Section,[string,string]][]).map(([key,[label,description]])=><Card key={key} title={label} description={`${description}\n${snapshot.data.updatedSections?.includes(key)?'Данные указаны и обновлены':snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}${drafts[key]?' · Есть несохранённый ввод':''}`} onPress={()=>open(key)} disabled={busy}/>)}
       <Notice>{snapshot.calculationMessage}</Notice>
       {snapshot.activeEstimateOutdated&&<Notice>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</Notice>}
       {snapshot.calculationStatus==='ready'&&<Button label="Посмотреть расчёт" onPress={()=>setView('compare')} disabled={busy}/>}
@@ -118,24 +115,11 @@ export default function Refinement() {
     {section&&!d&&snapshot&&<Button label="Открыть раздел" onPress={()=>open(section)}/>}
     {d&&snapshot&&view==='apartment'&&<ApartmentForm value={drafts.apartment!.data} onChange={v=>change('apartment',v)} disabled={busy}/>}
     {d&&snapshot&&view==='rooms'&&(room?<RoomForm value={room} onChange={setRoom} disabled={busy}/>:<>
-      <Heading>Жилые комнаты</Heading><View style={styles.row}>
-        <Button secondary label="−" disabled={busy||drafts.rooms!.data.rooms.filter(r=>r.type==='living').length<=1} onPress={()=>{
-          const candidate=[...drafts.rooms!.data.rooms].reverse().find(r=>r.type==='living'&&emptyRoom(r));
-          if(candidate)removeRoom(candidate);else setError('Выберите комнату для удаления в списке. Заполненные комнаты автоматически не удаляются.');
-        }}/><Heading>{drafts.rooms!.data.rooms.filter(r=>r.type==='living').length}</Heading><Button secondary label="+" disabled={busy} onPress={addLiving}/>
-      </View><Body>{drafts.rooms!.data.roomCountManual?'Количество указано вручную':'Определено автоматически. Можно изменить'}</Body>
-      {!drafts.rooms!.data.roomCountManual&&drafts.rooms!.data.rooms.filter(r=>r.type==='living').length!==snapshot.recommendedRoomCount&&<>
-        <Body>По площади рекомендуется комнат: {snapshot.recommendedRoomCount}</Body>
-        <Button secondary label="Использовать рекомендацию" disabled={busy} onPress={()=>{
-          while(drafts.rooms!.data.rooms.filter(r=>r.type==='living').length<snapshot.recommendedRoomCount)addLiving();
-          if(drafts.rooms!.data.rooms.filter(r=>r.type==='living').length>snapshot.recommendedRoomCount)setError('Удалите лишние комнаты явно в списке');
-          drafts.rooms!.data.roomCountManual=true;redraw(n=>n+1);
-        }}/></>}
       <Notice>Распределено: {drafts.rooms!.data.rooms.reduce((sum,r)=>sum+(amount(r.areaM2)||0),0).toLocaleString('ru-RU')} из {snapshot.data.apartment.areaM2} м²{'\n'}
         Не распределено: {(Math.round((amount(snapshot.data.apartment.areaM2)-drafts.rooms!.data.rooms.reduce((sum,r)=>sum+(amount(r.areaM2)||0),0))*100)/100).toLocaleString('ru-RU')} м²</Notice>
       {drafts.rooms!.data.rooms.map(r=><View key={r.id} style={{gap:8}}><Card title={r.name} description={r.areaM2==null||r.areaM2===''?'Указать площадь →':`${r.areaM2} м² →`} onPress={()=>{setRoom(clone(r));setError('');}} disabled={busy}/>
         <Button label={`Удалить ${r.name}`} secondary disabled={busy} onPress={()=>removeRoom(r)}/></View>)}
-      <Button label="+ Добавить помещение" secondary disabled={busy} onPress={()=>setRoom(newRoom())}/>
+      <Button label="+ Добавить" secondary disabled={busy} onPress={()=>setRoom(newRoom())}/>
     </>)}
     {d&&snapshot&&view==='kitchen'&&<>
       <Select label="Кухня" value={kitchenId} options={Object.fromEntries(snapshot.data.rooms.filter(r=>r.type==='kitchen').map(r=>[r.id,r.name]))} onChange={setKitchenId} disabled={busy}/>

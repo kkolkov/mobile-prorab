@@ -49,7 +49,7 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     assert.equal(await button(page,'Продолжить').isDisabled(),true); // unsaved choice lost after process/page restart
     await button(page,'Готовая к проживанию').click();await button(page,'Продолжить').click();await button(page,'Нет').waitFor();
     assert.equal(await button(page,'Нет').getAttribute('aria-selected'),'true');
-    assert.equal(await button(page,'Уменьшить: Количество комнат').isDisabled(),true);
+    assert.equal(await button(page,'Уменьшить: Количество комнат').isDisabled(),false);
     await button(page,'Увеличить: Количество комнат').click();await button(page,'Увеличить: Количество комнат').click();
     await button(page,'Продолжить').click();await button(page,'Комфорт').click();await button(page,'Получить оценку').click();
     await page.getByRole('heading',{name:'Предварительная оценка',exact:true}).waitFor();
@@ -79,7 +79,7 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     const path=`/projects/${id}/refinement`;await button(page,'Помещения').click();let snapshot=await api(path);
     assert.equal(snapshot.data.rooms.filter(r=>r.type==='living').length,3);
     const room=snapshot.data.rooms.find(r=>r.type==='living');await button(page,room.name).click();
-    await page.getByLabel('Название помещения',{exact:true}).fill('Спальня');await page.getByLabel('Площадь помещения, м²',{exact:true}).fill('20');
+    await page.getByLabel('Название помещения · необязательно',{exact:true}).fill('Спальня');await page.getByLabel('Площадь помещения, м²',{exact:true}).fill('20');
     await select(page,'Пол','Паркетная доска');await button(page,'Готово').click();
     assert.equal((await api(path)).data.rooms.find(r=>r.id===room.id).areaM2,null);
     await button(page,'Назад').click();await button(page,'Помещения').click();await button(page,'Спальня').waitFor();

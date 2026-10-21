@@ -61,6 +61,14 @@ public class ProjectService {
         return mapper.toResponse(repository.saveAndFlush(project));
     }
 
+    @Transactional
+    public void delete(UUID id, long version) {
+        Project p=repository.findForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Проект не найден"));
+        checkVersion(p,version);
+        repository.delete(p);
+        repository.flush();
+    }
+
     @Transactional(readOnly = true)
     public java.util.List<ProjectResponse> list(UUID userId) { return repository.findByOwnerIdOrderByUpdatedAtDesc(userId).stream().map(mapper::toResponse).toList(); }
 
@@ -75,7 +83,7 @@ public class ProjectService {
         if (step == 1) {
             if (request.version() == null) throw new BusinessException("Укажите версию проекта");
             BigDecimal area = required(request.areaM2(), "areaM2");
-            if (area.signum() <= 0 || area.compareTo(new BigDecimal("1000")) > 0 || area.stripTrailingZeros().scale() > 1)
+            if (area.compareTo(new BigDecimal("5")) < 0 || area.compareTo(new BigDecimal("9999")) > 0 || area.stripTrailingZeros().scale() > 1)
                 throw new BusinessException("Проверьте введённую площадь");
             if (request.name() != null && request.name().length() > 100) throw new BusinessException("Название: не более 100 символов");
             if (request.address() != null && request.address().length() > 250) throw new BusinessException("Адрес: не более 250 символов");
@@ -148,7 +156,7 @@ public class ProjectService {
     }
 
     private void applyCommon(Project p, StepRequest r) {
-        if (r.areaM2() != null) { if (r.areaM2().signum() <= 0) throw new BusinessException("areaM2 must be positive"); p.setAreaM2(r.areaM2()); }
+        if (r.areaM2() != null) { if (r.areaM2().compareTo(new BigDecimal("5")) < 0 || r.areaM2().compareTo(new BigDecimal("9999")) > 0 || r.areaM2().stripTrailingZeros().scale()>1) throw new BusinessException("areaM2 must be positive"); p.setAreaM2(r.areaM2()); }
         if (r.address() != null) p.setAddress(r.address());
         if (r.name() != null) {
             boolean user = !r.name().isBlank(); p.setName(user ? r.name().trim() : autoName(p.getAreaM2())); p.setNameSource(user ? NameSource.USER : NameSource.AUTO);
@@ -171,11 +179,14 @@ public class ProjectService {
         if(r.kitchensCount()!=null)p.setKitchensCount(validCount(r.kitchensCount()));
         p.setBathroomsCount(validCount(r.bathroomsCount()));
         p.setRedevelopment(Boolean.TRUE.equals(r.redevelopment()));
+        p.setOtherRoomsRepair(Boolean.TRUE.equals(r.otherRoomsRepair()));
+        if(Integer.valueOf(0).equals(p.getRoomsCount()) && p.getBathroomsCount()==0 && !p.isOtherRoomsRepair())
+            throw new BusinessException("Подтвердите ремонт в других помещениях");
     }
     private void invalidateEstimateIfNeeded(Project p, int step) { if (step <= 5 && p.getEstimateStatus() == EstimateStatus.READY) p.setEstimateStatus(EstimateStatus.STALE); }
     private Project find(UUID id) { return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Project not found: " + id)); }
     private void checkVersion(Project p, Long version) { if (version != null && p.getVersion() != version) throw new ObjectOptimisticLockingFailureException(Project.class, p.getProjectId()); }
-    private static int validCount(Integer v) { if (v == null || v < 1 || v > 20) throw new BusinessException("Count must be between 1 and 20"); return v; }
+    private static int validCount(Integer v) { if (v == null || v < 0 || v > 20) throw new BusinessException("Количество: от 0 до 20"); return v; }
     private static <T> T required(T v, String n) { if (v == null) throw new BusinessException(n + " is required"); return v; }
     private static String autoName(BigDecimal area) { return "Ремонт квартиры " + area.stripTrailingZeros().toPlainString() + " м²"; }
     private static void touch(Project p) { p.setUpdatedAt(Instant.now()); }

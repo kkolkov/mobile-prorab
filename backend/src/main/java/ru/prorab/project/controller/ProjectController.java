@@ -36,6 +36,11 @@ public class ProjectController {
         return projectService.rename(projectId, request);
     }
 
+    @PostMapping("/{projectId}/delete")
+    public void delete(@PathVariable UUID projectId, @RequestParam long version) {
+        projectService.delete(projectId, version);
+    }
+
     @GetMapping("/{projectId}")
     public ProjectResponse get(@PathVariable UUID projectId) { return projectService.get(projectId); }
 

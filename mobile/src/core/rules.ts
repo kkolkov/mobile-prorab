@@ -9,7 +9,7 @@ export function numberError(value: Numeric, required = false, scale = 1, min = 0
   return !new RegExp(`^\\d+(?:[.,]\\d{1,${scale}})?$`).test(raw) || !Number.isFinite(n) || n <= 0 || n < min || n > max
     ? 'Проверьте число и допустимый диапазон' : '';
 }
-export const validArea = (value: Numeric) => !numberError(value, true);
+export const validArea = (value: Numeric) => !numberError(value,true,1,5,9999);
 export const autoName = (value: Numeric) => validArea(value) ? `Ремонт квартиры ${amount(value)} м²` : '';
 export function updateNameArea(name: string, area: Numeric) {
   if (!validArea(area)) return name;

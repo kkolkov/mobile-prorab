@@ -13,6 +13,6 @@ public class ProjectMapper {
                 p.getAreaM2(), p.getAddress(), p.getCurrentState(), p.getTargetState(), p.getKitchensCount(),
                 p.getBathroomsCount(), p.getRedevelopment(), p.getFinishLevel(), p.getEstimateStatus(),
                 p.getBudgetMinRub(), p.getBudgetMaxRub(), p.getDurationMinDays(), p.getDurationMaxDays(),
-                p.getUpdatedAt(), p.getVersion(), p.getRoomsCount(), snapshots.read(p.getEstimateDetailsJson()));
+                p.getUpdatedAt(), p.getVersion(), p.getRoomsCount(), snapshots.read(p.getEstimateDetailsJson()), p.isOtherRoomsRepair());
     }
 }

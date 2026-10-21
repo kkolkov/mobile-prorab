@@ -5,8 +5,8 @@ import { ApiError, createRequest } from '../src/core/http.ts';
 import type { Project, Room } from '../src/core/types.ts';
 
 test('AC-01/02: area accepts comma and one decimal, rejects empty/zero/negative/extra precision',()=>{
-  for(const value of ['',null,'0','-3','abc','3.22'])assert.equal(validArea(value),false,String(value));
-  for(const value of ['33','68,5','68.5'])assert.equal(validArea(value),true);
+  for(const value of ['',null,'0','-3','abc','3.22','4.9','10000','5.01'])assert.equal(validArea(value),false,String(value));
+  for(const value of ['5','9999','33','68,5','68.5'])assert.equal(validArea(value),true);
   assert.equal(autoName('68,5'),'Ремонт квартиры 68.5 м²');
   assert.ok(numberError('1.99',false,2,2,5));assert.equal(numberError('2,75',false,2,2,5),'');
 });

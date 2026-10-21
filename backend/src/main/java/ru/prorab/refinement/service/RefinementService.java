@@ -59,6 +59,14 @@ public class RefinementService {
                 rooms=new ArrayList<>();
                 for(Room r:input.rooms()){
                     if(r==null||r.id()==null||r.type()==null)throw new BusinessException("Укажите идентификатор и тип помещения");
+                    String name=r.name()==null?"":r.name().trim();
+                    if(name.isEmpty()) {
+                        UUID roomId=r.id();
+                        var peers=new ArrayList<Room>(input.rooms().stream().filter(x->x!=null&&x.id()!=null&&!x.id().equals(roomId)&&x.name()!=null&&!x.name().isBlank()).toList());
+                        peers.addAll(rooms);
+                        name=RoomNames.next(r.type(),peers);
+                    }
+                    r=new Room(r.id(),r.type(),name,r.areaM2(),r.floor(),r.walls(),r.ceiling(),r.automatic());
                     Room before=prior.get(r.id());boolean automatic=before!=null&&before.automatic()&&sameRoom(before,r);
                     rooms.add(new Room(r.id(),r.type(),r.name(),r.areaM2(),r.floor(),r.walls(),r.ceiling(),automatic));
                 }
@@ -83,14 +91,17 @@ public class RefinementService {
             case "exteriors"->exteriors=convert(request.data(),Exteriors.class);
             default->throw new BusinessException("Неизвестный раздел");
         }
-        RefinementData changed=new RefinementData(apartment,List.copyOf(rooms),manual,Map.copyOf(kitchens),exteriors,old.completedSections());
+        RefinementData changed=new RefinementData(apartment,List.copyOf(rooms),manual,Map.copyOf(kitchens),exteriors,old.completedSections(),old.updatedSections());
         validation.validate(changed);
         AreaAllocation allocation=allocator.allocate(id,apartment.areaM2(),rooms);
         if(allocation.excessBlocked())throw new BusinessException("Сумма площадей превышает площадь квартиры сверх допуска max(0,5 м²; 1%)");
         if(json.valueToTree(old).equals(json.valueToTree(changed))
-                && !(section.equals("exteriors")&&!old.completedSections().contains(section)))return response(p,record);
-        Set<String> sections=new HashSet<>(old.completedSections());sections.add(section);
-        changed=new RefinementData(apartment,List.copyOf(rooms),manual,Map.copyOf(kitchens),exteriors,Set.copyOf(sections));
+                && old.completedSections().contains(section))return response(p,record);
+        Set<String> sections=new HashSet<>(old.completedSections());
+        Set<String> updated=new HashSet<>(old.updatedSections());
+        if(sections.contains(section)) updated.add(section);
+        sections.add(section);
+        changed=new RefinementData(apartment,List.copyOf(rooms),manual,Map.copyOf(kitchens),exteriors,Set.copyOf(sections),Set.copyOf(updated));
         boolean calculationChanged=!calculationInput(old).equals(calculationInput(changed));
         record.setInputJson(write(changed));
         updateProject(p,changed);
@@ -121,7 +132,7 @@ public class RefinementService {
     }
     @Transactional
     public void complete(Calculation job,RefinedEstimate result){
-        Project p=project(job.projectId());ProjectRefinement r=refinements.findById(job.projectId()).orElseThrow();
+        Project p=projects.findForUpdate(job.projectId()).orElse(null);if(p==null)return;ProjectRefinement r=refinements.findById(job.projectId()).orElse(null);if(r==null)return;
         if(!r.getCalculationStatus().equals("pending")||!Objects.equals(r.getCalculationId(),job.id())||r.getRevision()!=job.revision())return;
         if(p.getVersion()!=r.getCalculationProjectVersion()){r.setCalculationStatus("stale");return;}
         r.setCandidateJson(result==null?null:write(result));r.setCalculationStatus(result==null?"failed":"ready");
@@ -171,7 +182,7 @@ public class RefinementService {
                 status.equals("ready")?readNullable(r.getCandidateJson()):null);
     }
     private void updateProject(Project p,RefinementData d){
-        Apartment a=d.apartment();p.setAreaM2(a.areaM2());p.setCurrentState(a.currentState());p.setTargetState(a.targetState());p.setFinishLevel(a.finishLevel());
+        Apartment a=d.apartment();if(a.redevelopment()!=null)p.setRedevelopment(a.redevelopment());p.setAreaM2(a.areaM2());p.setCurrentState(a.currentState());p.setTargetState(a.targetState());p.setFinishLevel(a.finishLevel());
         p.setRoomsCount((int)d.rooms().stream().filter(r->r.type().equals("living")).count());
         p.setKitchensCount((int)d.rooms().stream().filter(r->r.type().equals("kitchen")).count());
         p.setBathroomsCount((int)d.rooms().stream().filter(r->Set.of("combined_bathroom","bathroom","toilet").contains(r.type())).count());
@@ -187,7 +198,7 @@ public class RefinementService {
         for(int i=rooms.size()-1;i>=0&&current>count;i--)if(rooms.get(i).type().equals("living")&&emptyAutomatic(rooms.get(i))){rooms.remove(i);current--;}
     }
     private Room room(String type,String name){return new Room(UUID.randomUUID(),type,name,null,"inherit","inherit","inherit",true);}
-    private JsonNode calculationInput(RefinementData d){ObjectNode tree=json.valueToTree(d);tree.remove(List.of("completedSections","roomCountManual"));((ArrayNode)tree.get("rooms")).forEach(r->((ObjectNode)r).remove(List.of("name","automatic")));return tree;}
+    private JsonNode calculationInput(RefinementData d){ObjectNode tree=json.valueToTree(d);tree.remove(List.of("completedSections","updatedSections","roomCountManual"));((ArrayNode)tree.get("rooms")).forEach(r->((ObjectNode)r).remove(List.of("name","automatic")));return tree;}
     private Project project(UUID id){return projects.findForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Проект не найден"));}
     private void checkVersion(Project p,Long version){if(version==null||p.getVersion()!=version)throw new ObjectOptimisticLockingFailureException(Project.class,p.getProjectId());}
     private String write(Object value){try{return json.writeValueAsString(value);}catch(JsonProcessingException ex){throw new IllegalStateException("Cannot serialize refinement",ex);}}

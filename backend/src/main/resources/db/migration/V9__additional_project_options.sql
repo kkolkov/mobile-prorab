@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN other_rooms_repair BOOLEAN NOT NULL DEFAULT FALSE;

@@ -4,11 +4,12 @@ export interface Project {
   projectId: string; status: 'draft' | 'active'; completedStep: number;
   name: string; nameSource: 'auto' | 'user'; areaM2: number; address: string | null;
   currentState: string | null; targetState: string | null; finishLevel: string | null;
-  roomsCount: number | null; kitchensCount: number; bathroomsCount: number; redevelopment: boolean;
+  otherRoomsRepair: boolean; roomsCount: number | null; kitchensCount: number; bathroomsCount: number; redevelopment: boolean;
   estimateStatus: string; budgetMinRub: number | null; budgetMaxRub: number | null;
   durationMinDays: number | null; durationMaxDays: number | null; version: number;
 }
 export interface Apartment {
+  redevelopment?: boolean | null;
   currentState: string; targetState: string; finishLevel: string; areaM2: Numeric;
   ceilingHeight: Numeric; floor: string; walls: string; ceiling: string; doors: string;
   demolition: string; wallPreparation: string; floorPreparation: string; electrical: string;
@@ -53,5 +54,5 @@ export interface Snapshot {
   calculationStatus: string; calculationMessage: string; activeEstimateOutdated: boolean;
   activeEstimate: Estimate | null; candidateEstimate: Estimate | null;
   data: { apartment: Apartment; rooms: Room[]; roomCountManual: boolean;
-    kitchens: Record<string, Kitchen>; exteriors: SectionData['exteriors']; completedSections: string[] };
+    kitchens: Record<string, Kitchen>; exteriors: SectionData['exteriors']; completedSections: string[]; updatedSections?: string[] };
 }

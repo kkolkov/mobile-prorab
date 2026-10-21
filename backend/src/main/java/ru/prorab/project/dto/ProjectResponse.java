@@ -10,5 +10,5 @@ public record ProjectResponse(
         BigDecimal areaM2, String address, CurrentState currentState, TargetState targetState,
         Integer kitchensCount, Integer bathroomsCount, Boolean redevelopment, FinishLevel finishLevel,
         EstimateStatus estimateStatus, Integer budgetMinRub, Integer budgetMaxRub,
-        Integer durationMinDays, Integer durationMaxDays, Instant updatedAt, long version, Integer roomsCount, ru.prorab.refinement.dto.RefinedEstimate estimateDetails
+        Integer durationMinDays, Integer durationMaxDays, Instant updatedAt, long version, Integer roomsCount, ru.prorab.refinement.dto.RefinedEstimate estimateDetails, boolean otherRoomsRepair
 ) {}

@@ -34,7 +34,7 @@ class ProjectWizardApiTest {
     @Test void roomsCountIsSeparateFromKitchensAndSeedsRefinement() throws Exception {
         JsonNode p=json.readTree(mvc.perform(post("/api/projects/draft").contentType("application/json").content("{\"areaM2\":90}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         String base="/api/projects/"+p.get("projectId").asText();
-        for(String count:new String[]{"0","-1","21","1.5"})mvc.perform(put(base+"/steps/4").contentType("application/json").content("{\"roomsCount\":"+count+",\"bathroomsCount\":1,\"version\":"+p.get("version").asLong()+"}")).andExpect(status().isBadRequest());
+        for(String count:new String[]{"-1","21","1.5"})mvc.perform(put(base+"/steps/4").contentType("application/json").content("{\"roomsCount\":"+count+",\"bathroomsCount\":1,\"version\":"+p.get("version").asLong()+"}")).andExpect(status().isBadRequest());
         String[] data={"\"currentState\":\"old_finish\"","\"targetState\":\"move_in_ready\"","\"roomsCount\":3,\"bathroomsCount\":1,\"redevelopment\":false","\"finishLevel\":\"comfort\""};
         for(int step=2;step<=5;step++)p=json.readTree(mvc.perform(put(base+"/steps/"+step+(step==5?"/estimate":"")).contentType("application/json").content("{\"version\":"+p.get("version").asLong()+","+data[step-2]+"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         mvc.perform(get(base)).andExpect(jsonPath("$.roomsCount").value(3)).andExpect(jsonPath("$.kitchensCount").value(1));

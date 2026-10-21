@@ -20,6 +20,9 @@ public class Project {
     @Column(length = 250) private String address;
     @Enumerated(EnumType.STRING) private CurrentState currentState;
     @Enumerated(EnumType.STRING) private TargetState targetState;
+    private boolean otherRoomsRepair;
+    public boolean isOtherRoomsRepair(){return otherRoomsRepair;}
+    public void setOtherRoomsRepair(boolean value){otherRoomsRepair=value;}
     private Integer roomsCount;
     public Integer getRoomsCount(){return roomsCount;}
     public void setRoomsCount(Integer value){roomsCount=value;}

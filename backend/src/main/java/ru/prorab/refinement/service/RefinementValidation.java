@@ -29,7 +29,6 @@ public class RefinementValidation {
             if(r.name()==null||r.name().isBlank()||r.name().length()>100)fail("Название помещения: от 1 до 100 символов");
             number(r.areaM2(),1,false,"Площадь помещения");materials(r.floor(),r.walls(),r.ceiling(),true);
         }
-        if(d.rooms().stream().noneMatch(r->r.type().equals("living")))fail("Нужна хотя бы одна жилая комната");
         for(var entry:d.kitchens().entrySet()){
             if(d.rooms().stream().noneMatch(r->r.id().equals(entry.getKey())&&r.type().equals("kitchen")))fail("Кухня не найдена");
             Kitchen k=entry.getValue();if(k==null)fail("Не указаны данные кухни");

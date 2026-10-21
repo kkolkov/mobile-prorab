@@ -1,5 +1,6 @@
 import {estimateDetails} from '../estimate-details.js';
 import {authHeaders} from '../auth/storage.js';
+import {roomName} from './room-name.js';
 import {esc,choices,select,apartmentForm,roomForm,kitchenForm,exteriorForm,parseDraft,fieldValid} from './forms.js?v=20261008-1';
 
 const sections={apartment:['Параметры квартиры','Состояния, уровень ремонта, площадь, высота, отделка и работы'],rooms:['Помещения','Количество комнат, площади и индивидуальная отделка'],kitchen:['Кухня и техника','Гарнитур, материалы и техника к покупке'],exteriors:['Балкон и лоджия','Площадь, остекление, утепление, отделка и электрика']};
@@ -23,6 +24,7 @@ export async function openRefinement(app,project,onExit){
  const draft=()=>drafts.get(view);
  function open(key){view=key;error='';conflict=false;if(!drafts.has(key)){
   let data=key==='rooms'?{rooms:copy(snapshot.data.rooms),roomCountManual:snapshot.data.roomCountManual}:copy(snapshot.data[key==='kitchen'?'kitchens':key]);
+  if(key==='apartment')data.redevelopment??=snapshot.project.redevelopment??false;
   drafts.set(key,{data,version:snapshot.project.version,confirmedRemovals:[]});
  }if(key==='kitchen')kitchenId=Object.keys(draft().data)[0]??null;emit('refinement_section_opened',key);render();}
  function shell(body){app.innerHTML=`<div class="shell refinement"><div class="top"><b class="brand">Мобильный прораб</b><button class="secondary" data-action="exit">В проект</button></div><p>${esc(snapshot?.project.name||project.name)}</p><div class="notice demo">Ориентировочный расчёт. Базовые цены условные, объёмы без обмеров определяются по допущениям.</div>${body}<div role="alert" class="error">${esc(error)}</div>${conflict?'<div class="notice">Данные изменены в другом сеансе. Ваш ввод сохранён в форме.<button data-action="refresh-conflict">Загрузить актуальные данные, сохранив мой ввод</button></div>':''}</div>`;bind();}
@@ -30,7 +32,7 @@ export async function openRefinement(app,project,onExit){
   clearTimeout(timer);if(closed)return;
   if(!snapshot){shell('<p>Загружаем проект…</p>');return;}
   if(view==='menu'){
-   shell(`<h1>Уточнение параметров проекта</h1><p>Выберите, какие данные хотите уточнить</p><div class="grid">${Object.entries(sections).map(([key,[title,text]])=>`<button class="card" data-open="${key}"><b>${title}</b><span>${text}</span><strong>${snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}</strong>${drafts.has(key)?'<small>Есть несохранённый ввод</small>':''}</button>`).join('')}</div><section class="notice"><p role="status">${esc(snapshot.calculationMessage)}</p>${snapshot.activeEstimateOutdated?'<p>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</p>':''}${snapshot.calculationStatus==='ready'?'<button data-action="compare" class="primary">Посмотреть расчёт</button>':''}${['failed','stale'].includes(snapshot.calculationStatus)?'<button data-action="retry" class="primary">Повторить расчёт</button>':''}</section>`);
+   shell(`<h1>Уточнение параметров проекта</h1><p>Выберите, какие данные хотите уточнить</p><div class="grid">${Object.entries(sections).map(([key,[title,text]])=>`<button class="card" data-open="${key}"><b>${title}</b><span>${text}</span><strong>${snapshot.data.updatedSections?.includes(key)?'Данные указаны и обновлены':snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}</strong>${drafts.has(key)?'<small>Есть несохранённый ввод</small>':''}</button>`).join('')}</div><section class="notice"><p role="status">${esc(snapshot.calculationMessage)}</p>${snapshot.activeEstimateOutdated?'<p>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</p>':''}${snapshot.calculationStatus==='ready'?'<button data-action="compare" class="primary">Посмотреть расчёт</button>':''}${['failed','stale'].includes(snapshot.calculationStatus)?'<button data-action="retry" class="primary">Повторить расчёт</button>':''}</section>`);
    if(snapshot.calculationStatus==='pending')timer=setTimeout(poll,800);return;
   }
   if(view==='compare'){comparison();return;}
@@ -46,14 +48,12 @@ export async function openRefinement(app,project,onExit){
  }
  function roomsForm(d){
   if(roomEditor)return roomForm(roomEditor);
-  const living=d.rooms.filter(r=>r.type==='living');const known=d.rooms.reduce((n,r)=>n+amount(r.areaM2),0),total=amount(snapshot.data.apartment.areaM2),remaining=Math.round((total-known)*100)/100;
-  return `<h2>Жилые комнаты</h2><div class="stepper"><button type="button" data-action="less" aria-label="Уменьшить количество комнат" ${living.length<=1?'disabled':''}>−</button><strong>${living.length}</strong><button type="button" data-action="more" aria-label="Увеличить количество комнат">+</button></div><p>${d.roomCountManual?'Количество указано вручную':'Определено автоматически. Можно изменить'}</p>${!d.roomCountManual&&living.length!==snapshot.recommendedRoomCount?`<p>По площади рекомендуется комнат: ${snapshot.recommendedRoomCount}</p><button type="button" data-action="recommended">Использовать рекомендацию</button>`:''}<div class="notice"><p>Распределено: ${known.toLocaleString('ru-RU')} из ${total} м²</p><p>Не распределено: ${remaining.toLocaleString('ru-RU')} м²</p>${remaining<0?'<p class="error">Сумма площадей превышает площадь квартиры</p>':''}</div><div class="grid">${d.rooms.map(r=>`<div class="room-row"><button type="button" class="card" data-room="${r.id}"><b>${esc(r.name)}</b><span>${r.areaM2==null||r.areaM2===''?'Указать площадь':esc(r.areaM2)+' м²'} →</span></button><button type="button" class="secondary" data-remove="${r.id}" aria-label="Удалить ${esc(r.name)}">Удалить</button></div>`).join('')}</div><button type="button" data-action="add-room" class="secondary">+ Добавить помещение</button>`;
+  const known=d.rooms.reduce((n,r)=>n+amount(r.areaM2),0),total=amount(snapshot.data.apartment.areaM2),remaining=Math.round((total-known)*100)/100;
+  return `<div class="notice"><p>Распределено: ${known.toLocaleString('ru-RU')} из ${total} м²</p><p>Не распределено: ${remaining.toLocaleString('ru-RU')} м²</p>${remaining<0?'<p class="error">Сумма площадей превышает площадь квартиры</p>':''}</div><div class="grid">${d.rooms.map(r=>`<div class="room-row"><button type="button" class="card" data-room="${r.id}"><b>${esc(r.name)}</b><span>${r.areaM2==null||r.areaM2===''?'Указать площадь':esc(r.areaM2)+' м²'} →</span></button><button type="button" class="secondary" data-remove="${r.id}" aria-label="Удалить ${esc(r.name)}">Удалить</button></div>`).join('')}</div><button type="button" data-action="add-room" class="secondary">+ Добавить</button>`;
  }
  function empty(r){return r.automatic&&r.areaM2==null&&r.floor==='inherit'&&r.walls==='inherit'&&r.ceiling==='inherit';}
- function addLiving(){const d=draft().data;d.rooms.push({id:uuid(),type:'living',name:'Комната '+(d.rooms.filter(r=>r.type==='living').length+1),areaM2:null,floor:'inherit',walls:'inherit',ceiling:'inherit',automatic:false});d.roomCountManual=true;}
  function removeRoom(id){
   const d=draft(),r=d.data.rooms.find(x=>x.id===id);if(!r)return;
-  if(r.type==='living'&&d.data.rooms.filter(x=>x.type==='living').length===1){error='Нужна хотя бы одна жилая комната';render();return;}
   if((!empty(r)||r.type==='kitchen')&&!confirm(`Удалить «${r.name}»${r.type==='kitchen'?' вместе с оснащением кухни':''}?`))return;
   d.confirmedRemovals.push(id);d.data.rooms=d.data.rooms.filter(x=>x.id!==id);if(r.type==='living')d.data.roomCountManual=true;render();
  }
@@ -66,6 +66,7 @@ export async function openRefinement(app,project,onExit){
    if(busy)return;const key=field.dataset.field;
    if(key==='selectedKitchen'){kitchenId=field.value;render();return;}
    let target=roomEditor??(view==='kitchen'?draft().data[kitchenId]:draft().data);
+   if(key==='redevelopment'){target.redevelopment=field.value==='true';return;}
    if(key==='repairNeeded'){target.presence=field.value==='no'?'none':'balcony';render();return;}
    if(key==='stoveEnabled')target.stove=field.checked?'hob':'none';else setField(target,key,field.type==='checkbox'?field.checked:field.value);
    if(field.dataset.number!==undefined)fieldValid(field);
@@ -75,7 +76,7 @@ export async function openRefinement(app,project,onExit){
   const form=app.querySelector('#refinement-form');if(form&&busy)form.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);if(form)form.onsubmit=async event=>{event.preventDefault();if(busy)return;let valid=true;form.querySelectorAll('[data-number]').forEach(el=>{valid=fieldValid(el)&&valid});if(!valid||!form.reportValidity())return;
    if(roomEditor){const d=draft();const before=d.data.rooms.find(r=>r.id===roomEditor.id);if(before?.type==='kitchen'&&roomEditor.type!=='kitchen'){if(!confirm('Смена типа удалит оснащение кухни. Продолжить?'))return;d.confirmedRemovals.push(before.id);}
     if(before?.type!==roomEditor.type&&(before?.type==='living'||roomEditor.type==='living'))d.data.roomCountManual=true;
-    const i=d.data.rooms.findIndex(r=>r.id===roomEditor.id);const edited=parseDraft(roomEditor);if(!before||JSON.stringify({...before,automatic:false})!==JSON.stringify({...edited,automatic:false}))edited.automatic=false;if(i<0){d.data.rooms.push(edited);if(edited.type==='living')d.data.roomCountManual=true;}else d.data.rooms[i]=edited;roomEditor=null;render();return;}
+    const i=d.data.rooms.findIndex(r=>r.id===roomEditor.id);const edited=parseDraft(roomEditor);edited.name=roomName(edited,d.data.rooms,choices.type);if(!before||JSON.stringify({...before,automatic:false})!==JSON.stringify({...edited,automatic:false}))edited.automatic=false;if(i<0){d.data.rooms.push(edited);if(edited.type==='living')d.data.roomCountManual=true;}else d.data.rooms[i]=edited;roomEditor=null;render();return;}
    await save();
   };
  }
@@ -84,10 +85,7 @@ export async function openRefinement(app,project,onExit){
   if(name==='back'){if(busy)return;error='';conflict=false;if(roomEditor)roomEditor=null;else view='menu';render();return;}
   if(name==='compare'){view='compare';render();return;}
   if(name==='menu'){view='menu';render();return;}
-  if(name==='more'){addLiving();render();return;}
-  if(name==='less'){const rooms=draft().data.rooms;const candidate=[...rooms].reverse().find(r=>r.type==='living'&&empty(r));if(candidate)removeRoom(candidate.id);else{error='Выберите комнату для удаления в списке. Заполненные комнаты автоматически не удаляются.';render();}return;}
-  if(name==='recommended'){const desired=snapshot.recommendedRoomCount;while(draft().data.rooms.filter(r=>r.type==='living').length<desired)addLiving();if(draft().data.rooms.filter(r=>r.type==='living').length>desired)error='Удалите лишние комнаты явно в списке';draft().data.roomCountManual=true;render();return;}
-  if(name==='add-room'){roomEditor={id:uuid(),type:'living',name:'Новое помещение',areaM2:null,floor:'inherit',walls:'inherit',ceiling:'inherit',automatic:false};render();return;}
+  if(name==='add-room'){roomEditor={id:uuid(),type:'living',name:'',areaM2:null,floor:'inherit',walls:'inherit',ceiling:'inherit',automatic:false};render();return;}
   if(name==='reset-appliances'){for(const key of ['stove','oven','refrigerator','hood','dishwasher'])draft().data[kitchenId][key]=null;render();return;}
   if(name==='refresh-conflict'){
    try{snapshot=await request();draft().version=snapshot.project.version;conflict=false;error='Актуальные данные загружены. В форме оставлен ваш ввод. Нажмите «Продолжить», только если хотите сохранить его вместо серверных значений.';}catch(e){error=e.message;}render();return;

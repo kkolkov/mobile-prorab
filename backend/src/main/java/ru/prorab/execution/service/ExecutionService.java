@@ -46,6 +46,21 @@ public class ExecutionService {
      tasks.add(new Task(phase.id(),phase.title(),phase.durationDays(),cursor,end,cursor,end,tasks.isEmpty()?"in_progress":"planned",null,phase.dependencies()));cursor=end.plusDays(1);
     }message="Начало ремонта: "+start;
    }
+   case "reschedule"->{
+    date(c.date());
+    int index=-1;for(int i=0;i<tasks.size();i++)if(tasks.get(i).id().equals(c.taskId()))index=i;
+    if(index<0)throw new BusinessException("Этап не найден");
+    if(tasks.get(index).status().equals("completed"))throw new BusinessException("Завершённый этап нельзя перенести");
+    if(index>0&&!c.date().isAfter(tasks.get(index-1).endDate()))throw new BusinessException("Начало этапа должно быть после завершения предыдущего этапа");
+    if(index==0)start=c.date();
+    LocalDate cursor=c.date();
+    for(int i=index;i<tasks.size();i++){
+     var t=tasks.get(i);if(t.status().equals("completed"))throw new BusinessException("Завершённый этап нельзя перенести");
+     var end=cursor.plusDays(t.durationDays()-1L);
+     tasks.set(i,new Task(t.id(),t.title(),t.durationDays(),t.baselineStart(),t.baselineEnd(),cursor,end,t.status(),t.completedDate(),t.dependencies()));cursor=end.plusDays(1);
+    }
+    message="Начало этапа «"+tasks.get(index).title()+"» перенесено на "+c.date()+". Последующие этапы сдвинуты с сохранением длительностей";
+   }
    case "shift","complete"->{
     int index=-1;for(int i=0;i<tasks.size();i++)if(tasks.get(i).id().equals(c.taskId()))index=i;
     if(index<0)throw new BusinessException("Этап не найден");var task=tasks.get(index);

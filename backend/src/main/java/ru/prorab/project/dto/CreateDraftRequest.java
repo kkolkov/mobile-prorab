@@ -4,7 +4,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 public record CreateDraftRequest(
-        @DecimalMin(value = "0.1") @DecimalMax(value = "1000") @NotNull BigDecimal areaM2,
+        @DecimalMin(value = "5") @DecimalMax(value = "9999") @Digits(integer = 4, fraction = 1) @NotNull BigDecimal areaM2,
         @Size(max = 250) String address,
         @Size(max = 100) String name,
         @jakarta.validation.Valid ru.prorab.onboarding.dto.AnswersRequest questionnaire
