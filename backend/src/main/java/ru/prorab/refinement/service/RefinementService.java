@@ -87,7 +87,8 @@ public class RefinementService {
         validation.validate(changed);
         AreaAllocation allocation=allocator.allocate(id,apartment.areaM2(),rooms);
         if(allocation.excessBlocked())throw new BusinessException("Сумма площадей превышает площадь квартиры сверх допуска max(0,5 м²; 1%)");
-        if(json.valueToTree(old).equals(json.valueToTree(changed)))return response(p,record);
+        if(json.valueToTree(old).equals(json.valueToTree(changed))
+                && !(section.equals("exteriors")&&!old.completedSections().contains(section)))return response(p,record);
         Set<String> sections=new HashSet<>(old.completedSections());sections.add(section);
         changed=new RefinementData(apartment,List.copyOf(rooms),manual,Map.copyOf(kitchens),exteriors,Set.copyOf(sections));
         boolean calculationChanged=!calculationInput(old).equals(calculationInput(changed));

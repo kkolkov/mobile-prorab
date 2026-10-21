@@ -41,7 +41,7 @@ export async function openRefinement(app,project,onExit){
    const kitchens=snapshot.data.rooms.filter(r=>r.type==='kitchen');
    body=kitchens.length?select('selectedKitchen','Кухня',kitchenId,Object.fromEntries(kitchens.map(k=>[k.id,k.name])))+`<p>Площадь: ${esc(kitchens.find(k=>k.id===kitchenId)?.areaM2??'не указана')} м² · ${choices.finishLevel[snapshot.project.finishLevel]}</p>`+kitchenForm(d.data[kitchenId],snapshot.project.targetState!=='finish_only'):'<p>Нет кухонь. Добавьте кухню в разделе «Помещения».</p>';
   }
-  if(view==='exteriors'){const e=d.data;body=select('presence','Наличие',e.presence);if(['balcony','both'].includes(e.presence))body+=exteriorForm(e.balcony,'balcony','Балкон');if(['loggia','both'].includes(e.presence))body+=exteriorForm(e.loggia,'loggia','Лоджия');}
+  if(view==='exteriors'){const e=d.data;body=select('repairNeeded','Нужен ремонт?',e.presence==='none'?'no':'yes',{yes:'Да',no:'Нет'});if(e.presence!=='none')body+=select('presence','Что нужно отремонтировать?',e.presence,{balcony:'Балкон',loggia:'Лоджия',both:'Оба'});if(['balcony','both'].includes(e.presence))body+=exteriorForm(e.balcony,'balcony','Балкон');if(['loggia','both'].includes(e.presence))body+=exteriorForm(e.loggia,'loggia','Лоджия');}
   shell(`<h1>${roomEditor?'Карточка помещения':sections[view][0]}</h1><form id="refinement-form">${body}<div class="actions"><button type="button" class="secondary" data-action="back" ${busy?'disabled':''}>Назад</button><button type="submit" class="primary" ${busy?'disabled':''}>${busy?'Сохранение…':roomEditor?'Готово':'Продолжить'}</button></div></form>`);
  }
  function roomsForm(d){
@@ -66,6 +66,7 @@ export async function openRefinement(app,project,onExit){
    if(busy)return;const key=field.dataset.field;
    if(key==='selectedKitchen'){kitchenId=field.value;render();return;}
    let target=roomEditor??(view==='kitchen'?draft().data[kitchenId]:draft().data);
+   if(key==='repairNeeded'){target.presence=field.value==='no'?'none':'balcony';render();return;}
    if(key==='stoveEnabled')target.stove=field.checked?'hob':'none';else setField(target,key,field.type==='checkbox'?field.checked:field.value);
    if(field.dataset.number!==undefined)fieldValid(field);
    if(['presence','cabinets','stove','stoveEnabled','type'].includes(key))render();

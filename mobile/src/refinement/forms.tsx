@@ -48,7 +48,8 @@ function ExteriorForm({value:e,onChange,disabled,kind}:Props<Exterior>&{kind:'ba
   </>;
 }
 export function ExteriorsForm({value:e,onChange,disabled}:Props<SectionData['exteriors']>) {
-  return <><Select label="Наличие" value={e.presence} options={choices.presence} onChange={v=>onChange({...e,presence:v})} disabled={disabled}/>
+  return <><Select label="Нужен ремонт?" value={e.presence==='none'?'no':'yes'} options={{yes:'Да',no:'Нет'}} onChange={v=>onChange({...e,presence:v==='no'?'none':'balcony'})} disabled={disabled}/>
+    {e.presence!=='none'&&<Select label="Что нужно отремонтировать?" value={e.presence} options={{balcony:'Балкон',loggia:'Лоджия',both:'Оба'}} onChange={v=>onChange({...e,presence:v})} disabled={disabled}/> }
     {(['balcony','loggia'] as const).filter(key=>e.presence===key||e.presence==='both').map(key=><ExteriorForm key={key} kind={key} value={e[key]} onChange={v=>onChange({...e,[key]:v})} disabled={disabled}/>)}</>;
 }
 export function roomError(room:Room) {

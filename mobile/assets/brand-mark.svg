@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Letterforms stay within the adaptive icon safe area. -->
+  <g fill="#fffefa">
+    <path d="M272 652V372h60l56 124 56-124h60v280h-62V493l-39 88h-30l-39-88v159z"/>
+    <path d="M548 652V372h204v280h-64V432h-76v220z"/>
+  </g>
+</svg>

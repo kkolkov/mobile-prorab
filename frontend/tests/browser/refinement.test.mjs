@@ -29,6 +29,21 @@ for(const [browserName,type] of Object.entries({webkit,chromium}))test(`${browse
   await page.getByRole('heading',{name:'Уточнение параметров проекта',exact:true}).waitFor();
   assert.equal(await page.locator('[data-open]').count(),4);
   const opened=await api(path);assert.deepEqual(opened.data.completedSections,[]);
+  const exteriorCard=page.locator('[data-open="exteriors"]');
+  assert.match(await exteriorCard.innerText(),/Не уточнено/);
+  await exteriorCard.click();
+  assert.equal(await page.getByLabel('Нужен ремонт?',{exact:true}).inputValue(),'no');
+  assert.equal(await page.locator('[data-field="presence"]').count(),0);
+  await page.getByRole('button',{name:'Назад',exact:true}).click();
+  assert.match(await exteriorCard.innerText(),/Не уточнено/);
+  assert.match(await exteriorCard.innerText(),/Есть несохранённый ввод/);
+  await exteriorCard.click();await page.getByRole('button',{name:'Продолжить',exact:true}).click();
+  await exteriorCard.getByText('Данные указаны',{exact:true}).waitFor();
+  assert.doesNotMatch(await exteriorCard.innerText(),/несохранённый/);
+  const confirmed=await api(path);
+  assert.equal(confirmed.data.exteriors.presence,'none');
+  assert.equal(confirmed.revision,opened.revision);
+  await page.reload();await exteriorCard.getByText('Данные указаны',{exact:true}).waitFor();
   await page.locator('[data-open="kitchen"]').click();
   await page.locator('[data-field="cabinets"]').selectOption('keep');
   for(const key of ['stoveEnabled','oven','refrigerator','hood','dishwasher'])await page.locator(`[data-field="${key}"]`).uncheck();
@@ -52,7 +67,7 @@ for(const [browserName,type] of Object.entries({webkit,chromium}))test(`${browse
   await page.getByRole('button',{name:'Назад',exact:true}).click();await page.locator('[data-open="rooms"]').click();
   assert.match(await page.locator(`[data-room="${roomId}"]`).innerText(),/Спальня/);
   await page.getByRole('button',{name:'Продолжить',exact:true}).click();
-  await page.locator('[data-open="exteriors"]').click();await page.locator('[data-field="presence"]').selectOption('both');
+  await page.locator('[data-open="exteriors"]').click();await page.locator('[data-field="repairNeeded"]').selectOption('yes');await page.locator('[data-field="presence"]').selectOption('both');
   for(const ext of ['balcony','loggia']){
    await page.locator(`[data-field="${ext}.ceiling"]`).selectOption('none');
    await page.locator(`[data-field="${ext}.insulation"]`).selectOption('no');

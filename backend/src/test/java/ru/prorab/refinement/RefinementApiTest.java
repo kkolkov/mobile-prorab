@@ -59,7 +59,7 @@ class RefinementApiTest {
         call("POST",url+"/calculate",Map.of("version",old.at("/project/version").asLong()),200);
         JsonNode candidate=ready(url);
         assertEquals(100000,candidate.at("/project/budgetMinRub").asInt());
-        assertEquals("unit-pricing-1",candidate.at("/candidateEstimate/algorithmVersion").asText());
+        assertEquals("unit-pricing-2",candidate.at("/candidateEstimate/algorithmVersion").asText());
         call("POST",url+"/apply",Map.of("version",candidate.at("/project/version").asLong(),"estimateId",candidate.at("/candidateEstimate/id").asText()),200);
         JsonNode reloaded=call("GET",url,null,200);
         assertEquals(candidate.get("candidateEstimate"),reloaded.get("activeEstimate"));
@@ -71,6 +71,23 @@ class RefinementApiTest {
         assertTrue(a.at("/activeEstimate/details/lines").size()>0);
         assertEquals(a.get("data"),b.get("data"));assertEquals(4,a.at("/data/rooms").size());assertEquals(1,a.at("/data/kitchens").size());assertEquals(0,a.at("/data/completedSections").size());
         JsonNode unchanged=save(url,a,"kitchen",a.at("/data/kitchens"));assertEquals(0,unchanged.get("revision").asInt());assertEquals("not_requested",unchanged.get("calculationStatus").asText());
+    }
+    @Test void confirmingNoExteriorRepairCompletesSectionWithoutRecalculation()throws Exception{
+        String url=create();JsonNode before=call("GET",url,null,200);
+        assertEquals("none",before.at("/data/exteriors/presence").asText());
+        assertEquals(0,before.at("/data/completedSections").size());
+        JsonNode saved=save(url,before,"exteriors",before.at("/data/exteriors"));
+        assertTrue(saved.at("/data/completedSections").toString().contains("exteriors"));
+        assertEquals(before.get("revision"),saved.get("revision"));
+        assertEquals(before.get("calculationStatus"),saved.get("calculationStatus"));
+        assertEquals(before.get("activeEstimate"),saved.get("activeEstimate"));
+        assertEquals(before.get("candidateEstimate"),saved.get("candidateEstimate"));
+        assertTrue(saved.at("/project/version").asLong()>before.at("/project/version").asLong());
+        JsonNode loaded=call("GET",url,null,200);
+        assertEquals(saved.get("data"),loaded.get("data"));
+        JsonNode repeated=save(url,loaded,"exteriors",loaded.at("/data/exteriors"));
+        assertEquals(loaded.at("/project/version"),repeated.at("/project/version"));
+        call("PUT",url+"/exteriors",Map.of("version",before.at("/project/version").asLong(),"data",before.at("/data/exteriors")),409);
     }
     @Test void areaAndAutomaticCompositionChangeAtomicallyAndActiveEstimateWaitsForApply()throws Exception{
         String url=create();JsonNode original=call("GET",url,null,200);ObjectNode apartment=original.at("/data/apartment").deepCopy();apartment.put("areaM2",75);

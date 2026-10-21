@@ -36,6 +36,22 @@ class UnitPriceCalculatorTest {
         var wall=result.details().lines().stream().filter(l->l.name().equals("Комната: стены")).findFirst().orElseThrow();
         assertEquals(new BigDecimal("56").sqrt(java.math.MathContext.DECIMAL64).multiply(new BigDecimal("4")).multiply(new BigDecimal("2.7")).multiply(new BigDecimal("0.85")).setScale(4,java.math.RoundingMode.HALF_UP),wall.quantity());
     }
+    @Test void bathroomWallsDefaultToTileButExplicitMaterialWins(){
+        var a=data(Kitchen.defaults(),none()).apartment();
+        for(String type:List.of("combined_bathroom","bathroom","toilet")){
+            for(String wall:List.of("inherit","unknown","paint")){
+                var rooms=List.of(
+                    new Room(UUID.randomUUID(),type,"Санузел",new BigDecimal("4"),"inherit",wall,"inherit",true),
+                    new Room(UUID.randomUUID(),"living","Комната",new BigDecimal("64"),"inherit","inherit","inherit",true));
+                var result=calc(new RefinementData(a,rooms,false,Map.of(),none(),Set.of()));
+                var line=result.details().lines().stream().filter(l->l.name().equals("Санузел: стены")).findFirst().orElseThrow();
+                // Comfort 1.3 × tile 1.6 or explicitly selected paint 1.2.
+                assertEquals(0,line.coefficient().compareTo(new BigDecimal(wall.equals("paint")?"1.56":"2.08")),type+" / "+wall);
+                var living=result.details().lines().stream().filter(l->l.name().equals("Комната: стены")).findFirst().orElseThrow();
+                assertEquals(0,living.coefficient().compareTo(new BigDecimal("1.3")));
+            }
+        }
+    }
     @Test void databasePriceChangeAffectsOnlyNewSnapshots(){
         var input=data(Kitchen.defaults(),none());var before=calc(input);
         jdbc.update("update price_matrix set unit_price_rub=unit_price_rub*2 where code='floor'");

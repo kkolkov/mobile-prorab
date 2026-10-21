@@ -16,7 +16,7 @@ import java.util.*;
 /** Unit pricing MVP. Prices and composition shares are provisional; geometry assumptions are explicit. */
 @Component
 public class UnitPriceCalculator implements RefinementCalculator {
-    public static final String VERSION="unit-pricing-1";
+    public static final String VERSION="unit-pricing-2";
     private final PriceCatalog catalog;
     public UnitPriceCalculator(PriceCatalog catalog){this.catalog=catalog;}
     public RefinedEstimate calculate(UUID id,long revision,RefinementData d,AreaAllocation allocation){
@@ -28,7 +28,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         notes.add("Нет обмеров периметра и проёмов: помещение условно квадратное; стены = 4 × √площадь × высота × 0,85. Проёмы — 15%.");
         notes.add("Высота: "+(a.ceilingHeight()==null?"норматив 2,7 м":a.ceilingHeight()+" м по вводу")+". Расчётные объёмы не подставляются в поля пользователя.");
         notes.add("Класс: Бюджетный ×1; Комфорт ×1,3; Бизнес ×1,7. Материалы и оснащение используют относительные коэффициенты модели, не рыночные котировки.");
-        notes.add("Неизвестная отделка: ламинат, обои, натяжной потолок; санузлы: плитка на полу, покраска стен. Частичные работы — 50% объёма.");
+        notes.add("Неизвестная отделка: ламинат, обои, натяжной потолок; санузлы: плитка на полу и стенах. Частичные работы — 50% объёма.");
         notes.add("Электрика: 1 точка на 4 м² с округлением вверх в каждом помещении. Санузел: 3 точки, ванная: 2, туалет/кухня: 1. Межкомнатные двери — по одной на комнату и санузел.");
         notes.add("Диапазон −10%/+15%, резерв 10% — допущения модели, не статистический доверительный интервал. Разделение материалов и работ по условным долям справочника.");
         notes.add("Срок остаётся демонстрационным: модель единичных расценок рассчитывает только стоимость. Вывоз мусора, доставка и изменение планировки отдельно не оценены.");
@@ -39,7 +39,8 @@ public class UnitPriceCalculator implements RefinementCalculator {
             boolean wet=Set.of("combined_bathroom","bathroom","toilet").contains(area.type());
             boolean shared=Set.of("living","kitchen","corridor","other").contains(area.type());
             String floor=effective(r==null?"inherit":r.floor(),wet?"tile":shared?a.floor():"unknown");
-            String walls=effective(r==null?"inherit":r.walls(),wet?"paint":shared?a.walls():"unknown");
+            String walls=effective(r==null?"inherit":r.walls(),wet?"tile":shared?a.walls():"unknown");
+            if(wet&&walls.equals("unknown"))walls="tile";
             String ceiling=effective(r==null?"inherit":r.ceiling(),wet?"stretch":shared?a.ceiling():"unknown");
             BigDecimal surface=walls(area.areaM2(),height);
             bill.add("repair",label+": пол","floor",area.areaM2(),material(floor));

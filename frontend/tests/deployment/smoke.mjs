@@ -50,6 +50,22 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     assert.ok(statusBox.y>=durationBox.y+durationBox.height);
     assert.ok(refineBox.y>=durationBox.y+durationBox.height);
 
+    await page.getByRole('button',{name:'Уточнить параметры проекта',exact:true}).click();
+    const exteriorCard=page.locator('[data-open="exteriors"]');
+    await exteriorCard.getByText('Не уточнено',{exact:true}).waitFor();
+    await exteriorCard.click();
+    assert.equal(await page.getByLabel('Нужен ремонт?',{exact:true}).inputValue(),'no');
+    await page.getByRole('button',{name:'Назад',exact:true}).click();
+    await exteriorCard.getByText('Есть несохранённый ввод',{exact:true}).waitFor();
+    await exteriorCard.click();
+    await page.getByRole('button',{name:'Продолжить',exact:true}).click();
+    await exteriorCard.getByText('Данные указаны',{exact:true}).waitFor();
+    await page.reload();await exteriorCard.getByText('Данные указаны',{exact:true}).waitFor();
+    await exteriorCard.click();
+    await page.getByLabel('Нужен ремонт?',{exact:true}).selectOption('yes');
+    await page.getByLabel('Что нужно отремонтировать?',{exact:true}).selectOption('both');
+    assert.deepEqual(await page.locator('fieldset legend').allTextContents(), ['Балкон','Лоджия']);
+
     await page.goto(base);await page.getByText('Продолжите ремонт или создайте новый проект.',{exact:true}).waitFor();
     await page.getByRole('button',{name:'Переименовать: Проверка размещения',exact:true}).click();
     await page.getByLabel('Название проекта',{exact:true}).fill('Проверка обновления Render');
@@ -58,7 +74,7 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     await page.reload();await page.getByRole('button',{name:'Переименовать: Проверка обновления Render',exact:true}).waitFor();
     const saved=await page.evaluate(async()=>{const {token}=JSON.parse(localStorage.getItem('prorab.auth.v1'));return (await fetch('/api/projects',{headers:{Authorization:`Bearer ${token}`}})).json();});
     assert.equal(saved.length,1);assert.equal(saved[0].roomsCount,3);assert.equal(saved[0].kitchensCount,1);
-    assert.equal(saved[0].estimateDetails.algorithmVersion,'unit-pricing-1');
+    assert.equal(saved[0].estimateDetails.algorithmVersion,'unit-pricing-2');
     assert.equal(saved[0].budgetMinRub,saved[0].estimateDetails.total.min);
     assert.ok(apiOrigins.length > 0);
     assert.deepEqual([...new Set(apiOrigins)], [new URL(base).origin]);
