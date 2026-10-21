@@ -16,7 +16,7 @@ import java.util.*;
 /** Unit pricing MVP. Prices and composition shares are provisional; geometry assumptions are explicit. */
 @Component
 public class UnitPriceCalculator implements RefinementCalculator {
-    public static final String VERSION="unit-pricing-2";
+    public static final String VERSION="unit-pricing-3";
     private final PriceCatalog catalog;
     public UnitPriceCalculator(PriceCatalog catalog){this.catalog=catalog;}
     public RefinedEstimate calculate(UUID id,long revision,RefinementData d,AreaAllocation allocation){
@@ -30,7 +30,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         notes.add("Класс: Бюджетный ×1; Комфорт ×1,3; Бизнес ×1,7. Материалы и оснащение используют относительные коэффициенты модели, не рыночные котировки.");
         notes.add("Неизвестная отделка: ламинат, обои, натяжной потолок; санузлы: плитка на полу и стенах. Частичные работы — 50% объёма.");
         notes.add("Электрика: 1 точка на 4 м² с округлением вверх в каждом помещении. Санузел: 3 точки, ванная: 2, туалет/кухня: 1. Межкомнатные двери — по одной на комнату и санузел.");
-        notes.add("Диапазон −10%/+15%, резерв 10% — допущения модели, не статистический доверительный интервал. Разделение материалов и работ по условным долям справочника.");
+        notes.add("Диапазон −10%/+15%, резерв 10% сверх максимума — допущения модели, не статистический доверительный интервал. Разделение материалов и работ по условным долям справочника.");
         notes.add("Срок остаётся демонстрационным: модель единичных расценок рассчитывает только стоимость. Вывоз мусора, доставка и изменение планировки отдельно не оценены.");
         BigDecimal height=a.ceilingHeight()==null?n("2.7"):a.ceilingHeight();
         Map<UUID,Room> rooms=new HashMap<>();d.rooms().forEach(r->rooms.put(r.id(),r));
@@ -106,7 +106,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
     private static BigDecimal material(String code){return n(switch(code){case "vinyl","paint","plastic"->"1.2";case "tile","plaster","drywall"->"1.6";case "parquet","stone","enamel"->"2.2";default->"1";});}
     private static BigDecimal n(String value){return new BigDecimal(value);}
     private static BigDecimal money(BigDecimal value){return value.setScale(0,RoundingMode.HALF_UP);}
-    private static Totals totals(BigDecimal value){return new Totals(money(value.multiply(n("0.9"))),money(value.multiply(n("1.15"))),value,money(value.multiply(n("1.1"))));}
+    private static Totals totals(BigDecimal value){BigDecimal max=money(value.multiply(n("1.15")));return new Totals(money(value.multiply(n("0.9"))),max,value,money(max.multiply(n("1.1"))));}
     private static class Ledger {
         final PriceCatalog.Snapshot prices;
         final BigDecimal level;

@@ -52,6 +52,14 @@ class UnitPriceCalculatorTest {
             }
         }
     }
+    @Test void reserveIsTenPercentAboveRoundedMaximumIncludingEmptyKitchen(){
+        var result=calc(data(new Kitchen("keep",null,"unknown","unknown","none",false,false,false,false),none()));
+        for(var totals:List.of(result.total(),result.repair(),result.kitchen())){
+            assertEquals(totals.max().multiply(new BigDecimal("1.10")).setScale(0,java.math.RoundingMode.HALF_UP),totals.withReserve());
+            assertTrue(totals.withReserve().compareTo(totals.max())>=0);
+        }
+        assertEquals(0,result.kitchen().withReserve().signum());
+    }
     @Test void databasePriceChangeAffectsOnlyNewSnapshots(){
         var input=data(Kitchen.defaults(),none());var before=calc(input);
         jdbc.update("update price_matrix set unit_price_rub=unit_price_rub*2 where code='floor'");

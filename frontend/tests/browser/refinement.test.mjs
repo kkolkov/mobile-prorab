@@ -77,6 +77,13 @@ for(const [browserName,type] of Object.entries({webkit,chromium}))test(`${browse
   await page.getByRole('button',{name:'Продолжить',exact:true}).click();
   await page.getByRole('button',{name:'Посмотреть расчёт',exact:true}).click();
   await page.getByRole('heading',{name:'Сравнение сметы',exact:true}).waitFor();
+  assert.equal(await page.getByRole('rowheader',{name:'Расчётная стоимость',exact:true}).count(),3);
+  const numbers=txt=>Number(txt.replace(/[^0-9−-]/g,''));
+  for(const table of await page.locator('table').filter({has:page.getByRole('rowheader',{name:'Максимум',exact:true})}).all()){
+   const max=await table.getByRole('row',{name:/^Максимум/}).locator('td').allTextContents();
+   const reserve=await table.getByRole('row',{name:/^Бюджет с резервом/}).locator('td').allTextContents();
+   for(let i=0;i<2;i++)if(!max[i].includes('Нет данных'))assert.equal(numbers(reserve[i]),Math.round(numbers(max[i])*1.1));
+  }
   await page.getByText('Из чего складывается оценка',{exact:true}).click();
   await page.getByText('Черновые материалы:',{exact:false}).waitFor();
   assert.ok(await page.locator('.estimate-details tbody tr').count()>0);

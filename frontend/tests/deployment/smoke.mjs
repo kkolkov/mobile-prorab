@@ -14,6 +14,7 @@ test('deployed JAR: same-origin registration, project persistence and private AP
       if (new URL(request.url()).pathname.startsWith('/api/')) apiOrigins.push(new URL(request.url()).origin);
     });
     await page.goto(base);
+    await page.getByRole('heading',{name:'Вход',exact:true}).waitFor();
     await page.getByRole('button', {name: 'Нет аккаунта? Зарегистрироваться'}).click();
     await page.getByLabel('Логин', {exact:true}).fill('deploy_' + crypto.randomUUID().replaceAll('-', ''));
     await page.getByLabel('Пароль', {exact:true}).fill('Deployment-test-123');
@@ -74,7 +75,8 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     await page.reload();await page.getByRole('button',{name:'Переименовать: Проверка обновления Render',exact:true}).waitFor();
     const saved=await page.evaluate(async()=>{const {token}=JSON.parse(localStorage.getItem('prorab.auth.v1'));return (await fetch('/api/projects',{headers:{Authorization:`Bearer ${token}`}})).json();});
     assert.equal(saved.length,1);assert.equal(saved[0].roomsCount,3);assert.equal(saved[0].kitchensCount,1);
-    assert.equal(saved[0].estimateDetails.algorithmVersion,'unit-pricing-2');
+    assert.equal(saved[0].estimateDetails.algorithmVersion,'unit-pricing-3');
+    assert.equal(saved[0].estimateDetails.total.withReserve,Math.round(saved[0].estimateDetails.total.max*1.1));
     assert.equal(saved[0].budgetMinRub,saved[0].estimateDetails.total.min);
     assert.ok(apiOrigins.length > 0);
     assert.deepEqual([...new Set(apiOrigins)], [new URL(base).origin]);

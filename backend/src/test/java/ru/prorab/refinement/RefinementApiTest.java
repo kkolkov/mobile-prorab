@@ -59,7 +59,7 @@ class RefinementApiTest {
         call("POST",url+"/calculate",Map.of("version",old.at("/project/version").asLong()),200);
         JsonNode candidate=ready(url);
         assertEquals(100000,candidate.at("/project/budgetMinRub").asInt());
-        assertEquals("unit-pricing-2",candidate.at("/candidateEstimate/algorithmVersion").asText());
+        assertEquals("unit-pricing-3",candidate.at("/candidateEstimate/algorithmVersion").asText());
         call("POST",url+"/apply",Map.of("version",candidate.at("/project/version").asLong(),"estimateId",candidate.at("/candidateEstimate/id").asText()),200);
         JsonNode reloaded=call("GET",url,null,200);
         assertEquals(candidate.get("candidateEstimate"),reloaded.get("activeEstimate"));

@@ -156,8 +156,8 @@ public class RefinementService {
             r.setActiveEstimateJson(p.getEstimateDetailsJson());
         }else if(p.getBudgetMinRub()!=null&&p.getBudgetMaxRub()!=null){
             BigDecimal min=BigDecimal.valueOf(p.getBudgetMinRub()),max=BigDecimal.valueOf(p.getBudgetMaxRub());BigDecimal expected=min.add(max).divide(new BigDecimal("2"),0,RoundingMode.HALF_UP);
-            var totals=new RefinedEstimate.Totals(min,max,expected,expected.multiply(new BigDecimal("1.1")).setScale(0,RoundingMode.HALF_UP));
-            r.setActiveEstimateJson(write(new RefinedEstimate(UUID.randomUUID(),-1,true,"legacy-demo","legacy-demo","legacy-demo",null,null,totals,null,null,p.getDurationMinDays(),p.getDurationMaxDays(),List.of(),List.of("Исходная оценка — заглушка; ожидаемая сумма взята как середина диапазона, резерв 10%. Разбивка исходной оценки отсутствует."),null)));
+            var totals=new RefinedEstimate.Totals(min,max,expected,max.multiply(new BigDecimal("1.1")).setScale(0,RoundingMode.HALF_UP));
+            r.setActiveEstimateJson(write(new RefinedEstimate(UUID.randomUUID(),-1,true,"legacy-demo","legacy-demo","legacy-demo",null,null,totals,null,null,p.getDurationMinDays(),p.getDurationMaxDays(),List.of(),List.of("Исходная оценка — заглушка; расчётная стоимость взята как середина диапазона, резерв 10% сверх максимума. Разбивка исходной оценки отсутствует."),null)));
         }
         return refinements.saveAndFlush(r);
     }
