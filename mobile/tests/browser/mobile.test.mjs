@@ -93,13 +93,13 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     await page.getByRole('heading',{name:'Сравнение сметы',exact:true}).waitFor();snapshot=await api(path);
     assert.equal(snapshot.data.completedSections.length,4);assert.equal(snapshot.candidateEstimate.kitchen.expected,0);
     assert.equal(snapshot.data.exteriors.balcony.areaM2,null);assert.equal(snapshot.data.exteriors.balcony.lighting,false);
-    const oldBudget=snapshot.project.budgetMinRub,oldDuration=snapshot.project.durationMinDays;
+    const oldBudget=snapshot.project.budgetMinRub;
     await button(page,'Вернуться в проект').click();await button(page,'Уточнить параметры проекта').waitFor();
     assert.equal((await api('/projects/'+id)).budgetMinRub,oldBudget);
     await page.screenshot({path:`/tmp/prorab-mobile-${engine}.png`,fullPage:true});
     await button(page,'Уточнить параметры проекта').click();await button(page,'Посмотреть расчёт').click();await button(page,'Применить расчёт').click();
     await button(page,'Уточнить параметры проекта').waitFor();const applied=await api(path);
-    assert.equal(applied.project.budgetMinRub,snapshot.candidateEstimate.total.min);assert.equal(applied.project.durationMinDays,oldDuration);
+    assert.equal(applied.project.budgetMinRub,snapshot.candidateEstimate.total.min);assert.equal(applied.project.durationMinDays,snapshot.candidateEstimate.durationMinDays);
     assert.deepEqual(errors,[]);
   }finally{await browser.close();}
 });

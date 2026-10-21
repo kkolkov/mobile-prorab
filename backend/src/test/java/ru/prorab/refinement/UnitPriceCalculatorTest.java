@@ -128,6 +128,6 @@ class UnitPriceCalculatorTest {
         assertTrue(yes.assumptions().stream().anyMatch(s->s.contains("4.5")));
         var hidden=calc(data(Kitchen.defaults(),new Exteriors("none",yesWorks,yesWorks)));
         assertEquals(calc(data(Kitchen.defaults(),none())).total(),hidden.total());
-        assertNull(yes.durationMinDays());
+        assertEquals(yes.timePlan().totalDays(),yes.durationMinDays());
     }
 }

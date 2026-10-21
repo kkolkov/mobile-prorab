@@ -17,8 +17,6 @@ public class UnitPriceEstimateService implements EstimateService {
     public EstimateResult calculate(Project p){
         var d=inputs.from(p);
         var estimate=calculator.calculate(UUID.randomUUID(),-1,d,allocator.allocate(p.getProjectId(),p.getAreaM2(),d.rooms()));
-        // calc.docx defines cost only. Preserve the explicitly labeled demo duration until a duration model is supplied.
-        int rooms=(p.getRoomsCount()==null?p.getKitchensCount():p.getRoomsCount())+p.getBathroomsCount();
-        return new EstimateResult(estimate.total().min().intValueExact(),estimate.total().max().intValueExact(),90+rooms*10,120+rooms*15,estimate);
+        return new EstimateResult(estimate.total().min().intValueExact(),estimate.total().max().intValueExact(),estimate.durationMinDays(),estimate.durationMaxDays(),estimate);
     }
 }

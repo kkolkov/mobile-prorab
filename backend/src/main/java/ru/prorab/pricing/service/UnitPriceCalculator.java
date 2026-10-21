@@ -16,7 +16,7 @@ import java.util.*;
 /** Unit pricing MVP. Prices and composition shares are provisional; geometry assumptions are explicit. */
 @Component
 public class UnitPriceCalculator implements RefinementCalculator {
-    public static final String VERSION="unit-pricing-3";
+    public static final String VERSION="unit-pricing-4";
     private final PriceCatalog catalog;
     public UnitPriceCalculator(PriceCatalog catalog){this.catalog=catalog;}
     public RefinedEstimate calculate(UUID id,long revision,RefinementData d,AreaAllocation allocation){
@@ -31,7 +31,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         notes.add("Неизвестная отделка: ламинат, обои, натяжной потолок; санузлы: плитка на полу и стенах. Частичные работы — 50% объёма.");
         notes.add("Электрика: 1 точка на 4 м² с округлением вверх в каждом помещении. Санузел: 3 точки, ванная: 2, туалет/кухня: 1. Межкомнатные двери — по одной на комнату и санузел.");
         notes.add("Диапазон −10%/+15%, резерв 10% сверх максимума — допущения модели, не статистический доверительный интервал. Разделение материалов и работ по условным долям справочника.");
-        notes.add("Срок остаётся демонстрационным: модель единичных расценок рассчитывает только стоимость. Вывоз мусора, доставка и изменение планировки отдельно не оценены.");
+        notes.add("Срок — ориентир по последовательным фазам в календарных днях, не гарантия. Технологическая пауза 8 дней условная: фактическую сушку определяют материалы и условия. Вывоз мусора, доставка и изменение планировки отдельно не оценены.");
         BigDecimal height=a.ceilingHeight()==null?n("2.7"):a.ceilingHeight();
         Map<UUID,Room> rooms=new HashMap<>();d.rooms().forEach(r->rooms.put(r.id(),r));
         for(var area:allocation.areas()){
@@ -79,9 +79,10 @@ public class UnitPriceCalculator implements RefinementCalculator {
         if(Set.of("balcony","both").contains(d.exteriors().presence()))exterior(bill,"balcony",d.exteriors().balcony(),"3.0",height,notes);
         if(Set.of("loggia","both").contains(d.exteriors().presence()))exterior(bill,"loggia",d.exteriors().loggia(),"4.5",height,notes);
         BigDecimal balcony=bill.sum("balcony"),loggia=bill.sum("loggia"),repair=bill.sum("repair").add(balcony).add(loggia),kitchen=bill.sum("kitchen");
+        var time=ru.prorab.execution.service.TimePlanner.calculate(d,bill.details());
         return new RefinedEstimate(id,revision,true,bill.prices.version(),VERSION,AreaAllocator.VERSION,
-                totals(repair),totals(kitchen),totals(repair.add(kitchen)),balcony,loggia,null,null,
-                List.of("Объёмы работ × ставки справочника × коэффициенты отделки", "Состав работ зависит от исходного состояния, цели и явных отказов"),List.copyOf(notes),bill.details());
+                totals(repair),totals(kitchen),totals(repair.add(kitchen)),balcony,loggia,time.totalDays(),(int)Math.ceil(time.totalDays()*1.2),
+                List.of("Объёмы работ × ставки справочника × коэффициенты отделки", "Состав работ зависит от исходного состояния, цели и явных отказов"),List.copyOf(notes),bill.details(),time);
     }
     private void exterior(Ledger bill,String section,Exterior e,String defaultArea,BigDecimal height,List<String> notes){
         String label=section.equals("balcony")?"Балкон":"Лоджия";

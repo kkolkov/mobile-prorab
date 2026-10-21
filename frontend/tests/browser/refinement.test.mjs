@@ -100,7 +100,7 @@ for(const [browserName,type] of Object.entries({webkit,chromium}))test(`${browse
   await page.getByRole('button',{name:'Применить расчёт',exact:true}).click();
   await page.getByRole('button',{name:'Уточнить параметры проекта',exact:true}).waitFor();
   const applied=await api(path);assert.equal(applied.project.budgetMinRub,saved.candidateEstimate.total.min);
-  assert.equal(applied.project.durationMinDays,p.durationMinDays);
+  assert.equal(applied.project.durationMinDays,saved.candidateEstimate.durationMinDays);
   assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 });

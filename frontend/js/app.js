@@ -30,7 +30,7 @@ async function cp6(){
  <div class="summary"><div><span class="muted">Проект</span><div class="big">${escapeText(p.name)}</div></div>
  <div><span class="muted">Бюджет</span><div class="big">${budget}</div></div>
  <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>
- <p>Ориентировочная оценка. Базовые цены условные, срок демонстрационный.</p>${estimateDetails(p.estimateDetails)}
+ <p>Ориентировочная оценка. Базовые цены условные, срок ориентировочный.</p>${estimateDetails(p.estimateDetails)}
  ${failed?`<button class="secondary" id="retry-estimate" ${state.loading?'disabled':''}>Повторить расчёт</button>`:''}
  <button class="secondary" id="refine">Уточнить расчёт</button>
  <div class="notice">Площадь ${p.areaM2} м² · комнаты ${p.roomsCount??'—'} · санузлы ${p.bathroomsCount}</div>
@@ -52,19 +52,22 @@ async function goRefinement(){
 function db01(){
  const p=state.project;
  renderScreen(app,`<div class="top"><span class="brand">Мобильный прораб</span><span class="step">Проект</span></div><h1>${escapeText(p.name)}</h1>
- <div class="notice">Ориентировочная оценка. Базовые цены условные, срок демонстрационный.</div>
+ <div class="notice">Ориентировочная оценка. Базовые цены условные, срок ориентировочный.</div>
  ${p.estimateStatus==='stale'?'<div class="notice">Активная смета рассчитана по прежним параметрам. Уточнённая смета применяется отдельно.</div>':''}
  <div class="summary"><div><span class="muted">Бюджет</span><div class="big">${p.budgetMinRub?money(p.budgetMinRub)+' — '+money(p.budgetMaxRub)+' ₽':'Пока не рассчитан'}</div></div>
  <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>
  <div class="project-planning"><div><span class="muted">Статус</span><h2>Планирование</h2></div><button class="primary" id="refine">Уточнить параметры проекта</button></div>
- ${estimateDetails(state.project.estimateDetails)}<h2>Инструменты проекта</h2><p>План работ · финансовый трекер · трекер ремонта</p><p class="muted">Эти разделы пока не реализованы.</p><div class="error" role="alert">${escapeText(state.error)}</div>`);
+ ${estimateDetails(state.project.estimateDetails)}<h2>Инструменты проекта</h2><div class="grid"><button class="card" id="schedule"><b>График работ</b><span>Этапы, даты и прогресс ремонта</span></button><button class="card" id="finance"><b>Финансовый трекер</b><span>План, расходы и остаток бюджета</span></button></div><div class="error" role="alert">${escapeText(state.error)}</div>`);
  document.querySelector('#refine').onclick=goRefinement;
+ document.querySelector('#schedule').onclick=()=>goExecution('schedule');
+ document.querySelector('#finance').onclick=()=>goExecution('finance');
 }
+async function goExecution(tab){const {openExecution}=await import('./execution/app.js');await openExecution(app,state.project,()=>void start(),tab);}
 export async function start(){
  const route=new URLSearchParams(window.location?.hash?.slice(1)||'');
  const id=route.get('project');
  if(!id){await home();return;}
- try {const p=await api.get(id);setProject(p);state.step=p.status==='active'?7:Math.min(p.completedStep+1,6);render();if(route.has('refinement'))await goRefinement();}
+ try {const p=await api.get(id);setProject(p);state.step=p.status==='active'?7:Math.min(p.completedStep+1,6);render();if(route.has('refinement'))await goRefinement();else if(route.has('tool'))await goExecution(route.get('tool')); }
  catch(e){state.error='Не удалось открыть проект. '+e.message;render();}
 }
 

@@ -136,7 +136,7 @@ public class RefinementService {
         r.setActiveEstimateJson(write(candidate));
         p.setEstimateDetailsJson(write(candidate));
         p.setBudgetMinRub(candidate.total().min().intValueExact());p.setBudgetMaxRub(candidate.total().max().intValueExact());
-        // No duration change: demo calculator does not implement a supported duration algorithm.
+        if(candidate.durationMinDays()!=null){p.setDurationMinDays(candidate.durationMinDays());p.setDurationMaxDays(candidate.durationMaxDays());}
         p.setEstimateStatus(EstimateStatus.READY);p.setStatus(ProjectStatus.ACTIVE);p.setUpdatedAt(Instant.now());projects.saveAndFlush(p);
         r.setCalculationProjectVersion(p.getVersion());refinements.saveAndFlush(r);
         return response(p,r);
@@ -157,7 +157,7 @@ public class RefinementService {
         }else if(p.getBudgetMinRub()!=null&&p.getBudgetMaxRub()!=null){
             BigDecimal min=BigDecimal.valueOf(p.getBudgetMinRub()),max=BigDecimal.valueOf(p.getBudgetMaxRub());BigDecimal expected=min.add(max).divide(new BigDecimal("2"),0,RoundingMode.HALF_UP);
             var totals=new RefinedEstimate.Totals(min,max,expected,max.multiply(new BigDecimal("1.1")).setScale(0,RoundingMode.HALF_UP));
-            r.setActiveEstimateJson(write(new RefinedEstimate(UUID.randomUUID(),-1,true,"legacy-demo","legacy-demo","legacy-demo",null,null,totals,null,null,p.getDurationMinDays(),p.getDurationMaxDays(),List.of(),List.of("Исходная оценка — заглушка; расчётная стоимость взята как середина диапазона, резерв 10% сверх максимума. Разбивка исходной оценки отсутствует."),null)));
+            r.setActiveEstimateJson(write(new RefinedEstimate(UUID.randomUUID(),-1,true,"legacy-demo","legacy-demo","legacy-demo",null,null,totals,null,null,p.getDurationMinDays(),p.getDurationMaxDays(),List.of(),List.of("Исходная оценка — заглушка; расчётная стоимость взята как середина диапазона, резерв 10% сверх максимума. Разбивка исходной оценки отсутствует."),null,null)));
         }
         return refinements.saveAndFlush(r);
     }

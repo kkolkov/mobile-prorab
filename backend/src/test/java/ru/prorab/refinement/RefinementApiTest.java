@@ -59,7 +59,7 @@ class RefinementApiTest {
         call("POST",url+"/calculate",Map.of("version",old.at("/project/version").asLong()),200);
         JsonNode candidate=ready(url);
         assertEquals(100000,candidate.at("/project/budgetMinRub").asInt());
-        assertEquals("unit-pricing-3",candidate.at("/candidateEstimate/algorithmVersion").asText());
+        assertEquals("unit-pricing-4",candidate.at("/candidateEstimate/algorithmVersion").asText());
         call("POST",url+"/apply",Map.of("version",candidate.at("/project/version").asLong(),"estimateId",candidate.at("/candidateEstimate/id").asText()),200);
         JsonNode reloaded=call("GET",url,null,200);
         assertEquals(candidate.get("candidateEstimate"),reloaded.get("activeEstimate"));
@@ -96,7 +96,7 @@ class RefinementApiTest {
         JsonNode noop=save(url,current,"apartment",current.at("/data/apartment"));assertEquals(current.at("/candidateEstimate/id"),noop.at("/candidateEstimate/id"));
         Map<String,Object> apply=Map.of("version",current.at("/project/version").asLong(),"estimateId",current.at("/candidateEstimate/id").asText());
         JsonNode applied=call("POST",url+"/apply",apply,200);assertEquals(current.get("candidateEstimate"),applied.at("/project/estimateDetails"));assertEquals(current.at("/candidateEstimate/total/min").asInt(),applied.at("/project/budgetMinRub").asInt());
-        assertEquals(original.at("/project/durationMinDays"),applied.at("/project/durationMinDays"));
+        assertEquals(current.at("/candidateEstimate/durationMinDays"),applied.at("/project/durationMinDays"));
         assertEquals(applied.at("/project/version"),call("POST",url+"/apply",apply,200).at("/project/version"));
     }
     @Test void savedRoomMeasurementsSurviveAreaChangeAndStaleVersionsConflict()throws Exception{

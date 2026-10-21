@@ -32,11 +32,11 @@ export function Grid({children}:React.PropsWithChildren){
 export function Metric({label,value,tone='sage'}:{label:string;value:string;tone?:'sage'|'lavender'}){
  return <View style={[styles.metric,{backgroundColor:palette[tone]}]}><Text style={styles.text}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
 }
-export function Screen({title,subtitle,step,back,home,busy,children}: React.PropsWithChildren<{
-  title:string;subtitle?:string;step?:number;back?:()=>void;home?:()=>void;busy?:boolean;
+export function Screen({title,subtitle,step,back,home,busy,children,scrollRef}: React.PropsWithChildren<{
+  title:string;subtitle?:string;step?:number;back?:()=>void;home?:()=>void;busy?:boolean;scrollRef?:React.Ref<ScrollView>;
 }>) {
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
-    <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
+    <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
       <View style={styles.masthead}><View style={styles.row}><View style={styles.logo}><Text style={{color:palette.surface,fontWeight:'700'}}>мп</Text></View><Text style={styles.brand}>Мобильный прораб</Text></View>{step && step<=5 ? <Text style={styles.step}>Шаг {step} из 5</Text>:null}</View>
       {(back || home) && <View style={styles.row}>{back && <Button label="Назад" secondary onPress={back} disabled={busy}/>}{home && <Button label="Мои проекты" secondary onPress={home} disabled={busy}/>}</View>}
       {step && step<=5 ? <View style={{height:6,backgroundColor:'#e0e7dc',borderRadius:4}}><View style={{height:6,width:`${step*20}%`,backgroundColor:'#66856b',borderRadius:4}}/></View>:null}
@@ -88,7 +88,7 @@ export function Counter({label,value,onChange,min=1,max=20,disabled}: {label:str
   </View></View>;
 }
 export const Notice=({children}:React.PropsWithChildren)=> <View style={styles.notice}><Text style={styles.text}>{children}</Text></View>;
-export const Demo=()=> <Notice>Ориентировочная оценка. Базовые цены условные, срок демонстрационный.</Notice>;
+export const Demo=()=> <Notice>Ориентировочная оценка. Базовые цены условные, срок ориентировочный.</Notice>;
 export const ErrorText=({message}:{message:string})=>message?<Text accessibilityRole="alert" style={styles.error}>{message}</Text>:null;
 export const Heading=({children}:React.PropsWithChildren)=><Text accessibilityRole="header" style={styles.h2}>{children}</Text>;
 export const Body=({children}:React.PropsWithChildren)=><Text style={styles.text}>{children}</Text>;
