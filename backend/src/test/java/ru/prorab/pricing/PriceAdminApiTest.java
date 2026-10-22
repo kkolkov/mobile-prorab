@@ -25,6 +25,12 @@ class PriceAdminApiTest {
   mvc.perform(get("/porabadmin")).andExpect(status().isOk()).andExpect(forwardedUrl("/porabadmin/index.html"));
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
  }
+ @Test void adminAliasesAndPackagedAssetsAreAvailable()throws Exception{
+  for(String route:new String[]{"/porabadmin","/porabadmin/","/prorabadmin","/prorabadmin/"})
+   mvc.perform(get(route)).andExpect(status().isOk()).andExpect(forwardedUrl("/porabadmin/index.html"));
+  for(String asset:new String[]{"/porabadmin/index.html","/porabadmin/app.js","/porabadmin/style.css","/porabadmin/guide.html","/prorabadmin/index.html"})
+   mvc.perform(get(asset)).andExpect(status().isOk());
+ }
  @Test void changedPricePersistsChangesCatalogHashAndOldSnapshotIsImmutable()throws Exception{
   var before=catalog.snapshot();var input=floor();input.put("unitPriceRub",3210.55);input.put("sourceNote","Прайс поставщика, Москва, работа + материал");input.put("priceDate",LocalDate.now().toString());input.put("verified",true);
   var saved=save(input,200);assertEquals(3210.55,floor().get("unitPriceRub").asDouble());assertTrue(saved.get("verified").asBoolean());

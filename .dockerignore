@@ -14,3 +14,8 @@
 !frontend/css/**
 !frontend/js/
 !frontend/js/**
+
+!frontend/porabadmin/
+!frontend/porabadmin/**
+!frontend/prorabadmin/
+!frontend/prorabadmin/**

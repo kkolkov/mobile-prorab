@@ -7,6 +7,8 @@ COPY backend/src ./backend/src
 COPY frontend/index.html ./frontend/index.html
 COPY frontend/css ./frontend/css
 COPY frontend/js ./frontend/js
+COPY frontend/porabadmin ./frontend/porabadmin
+COPY frontend/prorabadmin ./frontend/prorabadmin
 RUN chmod +x gradlew && ./gradlew --no-daemon :backend:test :backend:bootJar
 
 FROM eclipse-temurin:21-jre-jammy
