@@ -1,3 +1,5 @@
+import {pickPhotos,type StagePhoto} from '../../execution/photos';
+import {StagePhotos} from '../../execution/StagePhotos';
 import {useCallback,useRef,useState} from 'react';
 import {View,ScrollView,Text} from 'react-native';
 import {router,useLocalSearchParams,useFocusEffect} from 'expo-router';
@@ -12,19 +14,21 @@ const statuses={planned:'В планах',in_progress:'В процессе',comp
 const date=(s:string|null)=>s?s.split('-').reverse().join('.'):'—';
 const day=(s:string)=>Date.parse(s+'T00:00:00Z')/86400000;
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-type Form={version?:number;action:string;caption:string;expenseId?:string;estimateId?:string;title?:string;amount?:string;category?:string;date?:string;taskId?:string;days?:string;reason?:string};
+type Form={version?:number;action:string;caption:string;expenseId?:string;estimateId?:string;title?:string;amount?:string;category?:string;date?:string;taskId?:string;days?:string;reason?:string;photos?:StagePhoto[]};
 const drafts=new Map<string,Form>();
 export default function ExecutionScreen(){
  const {id,tab:initial}=useLocalSearchParams<{id:string;tab?:string}>();
  const [s,setSnapshot]=useState<Execution|null>(null),[tab,setTab]=useState(initial??'schedule'),[form,setForm]=useState<Form|null>(drafts.get(id)??null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[conflict,setConflict]=useState(false),[diagram,setDiagram]=useState(true),[history,setHistory]=useState(false);
+ const [loadedPhotos,setLoadedPhotos]=useState<Record<string,StagePhoto[]>>({});
  const lock=useRef(false);const scroll=useRef<ScrollView>(null);
  function change(f:Form|null){if(f&&(!form||f.action!==form.action||f.expenseId!==form.expenseId))setTimeout(()=>scroll.current?.scrollTo({y:0,animated:true}),0);if(f&&f.version===undefined&&s)f={...f,version:s.version};setForm(f);if(f)drafts.set(id,f);else drafts.delete(id);}
  const load=useCallback(async()=>{try{setSnapshot(await request<Execution>(`/projects/${id}/execution`));setError('');setConflict(false);}catch(e){setError((e as Error).message);}},[id]);
  useFocusEffect(useCallback(()=>{void load();},[load]));
  async function run(fn:()=>Promise<void>){if(lock.current)return;lock.current=true;setBusy(true);setError('');try{await fn();setConflict(false);}catch(e){setError((e as Error).message);setConflict((e as {status?:number}).status===409);}finally{lock.current=false;setBusy(false);}}
  function expense(taskId?:string,e?:Expense){change({action:e?'edit-expense':'expense',caption:e?'Изменить расход':'Новый расход',expenseId:e?.id??Crypto.randomUUID(),title:e?.title??'',amount:e?String(e.amount):'',category:e?.category??'rough',date:e?.date??today(),taskId:e?.taskId??taskId??''});}
- async function save(){if(!s||!form)return;const f=form;await run(async()=>{const result=await request<Execution>(`/projects/${id}/execution/${f.action}`,{...f,version:f.version,title:f.title?.trim(),amount:f.amount===undefined?null:Number(f.amount.replace(',','.')),days:f.days===undefined?null:Number(f.days),taskId:f.taskId||null});setSnapshot(result);change(null);});}
- const input=(key:keyof Form,label:string,numeric=false)=><Field label={label} value={form?.[key]??''} onChange={v=>change({...form!,[key]:v})} disabled={busy} numeric={numeric} scale={key==='amount'?2:1} maxLength={key==='reason'?500:160}/>;
+ async function save(){if(!s||!form)return;const f=form;await run(async()=>{const result=await request<Execution>(`/projects/${id}/execution/${f.action}`,{...f,version:f.version,title:f.title?.trim(),amount:f.amount===undefined?null:Number(f.amount.replace(',','.')),days:f.days===undefined?null:Number(f.days),taskId:f.taskId||null});setSnapshot(result);if(f.action==='complete'&&f.photos?.length){const key=result.data.history.at(-1)!.photoIds![0];setLoadedPhotos(current=>({...current,[key]:f.photos!}));}change(null);});}
+ function gallery(ids:string[]){return <View>{!!ids?.length&&<><Button label={`${loadedPhotos[ids[0]]?'Скрыть фотографии':'Показать фотографии'} (${ids.length})`} secondary disabled={busy} onPress={()=>void run(async()=>{const key=ids![0];if(loadedPhotos[key]){setLoadedPhotos(current=>{const next={...current};delete next[key];return next;});return;}const images:StagePhoto[]=[];for(const photoId of ids!)images.push(await request<StagePhoto>(`/projects/${id}/execution/photos/${photoId}`));setLoadedPhotos(current=>({...current,[key]:images}));})}/>{loadedPhotos[ids[0]]&&<StagePhotos photos={loadedPhotos[ids[0]]}/>}</>}</View>;}
+ const input=(key:Exclude<keyof Form,'photos'>,label:string,numeric=false)=><Field label={label} value={form?.[key]??''} onChange={v=>change({...form!,[key]:v})} disabled={busy} numeric={numeric} scale={key==='amount'?2:1} maxLength={key==='reason'?500:160}/>;
  const tasks=s?.data.tasks??[];const chartWidth=Math.max(500,Math.ceil((s?.totalDays??1)/7)*64);
  return <Screen scrollRef={scroll} title={tab==='schedule'?'График работ':'Финансовый трекер'} back={()=>router.replace(`/project/${id}`)}>
   <Grid><Button label="График" secondary={tab!=='schedule'} onPress={()=>setTab('schedule')} disabled={busy}/><Button label="Финансы" secondary={tab!=='finance'} onPress={()=>setTab('finance')} disabled={busy}/></Grid>
@@ -33,7 +37,7 @@ export default function ExecutionScreen(){
    {['expense','edit-expense'].includes(form.action)&&<>{input('title','Название расхода')}{input('amount','Сумма, ₽',true)}<Select label="Категория" value={form.category??'rough'} options={categories} onChange={v=>change({...form,category:v})} disabled={busy}/>{input('date','Дата расхода (ГГГГ-ММ-ДД)')}<Select label="Этап ремонта" value={form.taskId??''} options={{'':'Без привязки',...Object.fromEntries(tasks.map(t=>[t.id,t.title]))}} onChange={v=>change({...form,taskId:v})} disabled={busy}/></>}
    {['start','reschedule'].includes(form.action)&&input('date','Дата начала ремонта (ГГГГ-ММ-ДД)')}
    {form.action==='shift'&&<>{input('days','Добавить дней',true)}{input('reason','Причина переноса — необязательно')}</>}
-   {form.action==='complete'&&<>{input('date','Дата завершения этапа (ГГГГ-ММ-ДД)')}{input('reason','Комментарий — необязательно')}</>}
+   {form.action==='complete'&&<>{input('date','Дата завершения этапа (ГГГГ-ММ-ДД)')}{input('reason','Комментарий — необязательно')}<Body>Фотографии — необязательно. До 5 фото, сохранятся вместе с завершением этапа.</Body><Button label="Прикрепить фотографии" secondary disabled={busy||(form.photos?.length??0)>=5} onPress={()=>void run(async()=>{const added=await pickPhotos(5-(form.photos?.length??0));change({...form,photos:[...(form.photos??[]),...added]});})}/><StagePhotos photos={form.photos??[]} disabled={busy} remove={i=>change({...form,photos:form.photos?.filter((_,index)=>index!==i)})}/></>}
    {form.action==='remove-expense'&&<Body>Удалить этот расход из фактических затрат?</Body>}
    {form.action==='sync'&&<Body>Обновить план бюджета? Расходы и начатый график сохранятся. Новые сроки можно учесть переносом этапов.</Body>}
    <Button label="Сохранить" disabled={busy} onPress={()=>void save()}/><Button label="Отмена" secondary disabled={busy} onPress={()=>change(null)}/>
@@ -48,6 +52,7 @@ export default function ExecutionScreen(){
      {tasks.map(t=><View key={t.id} style={{flexDirection:'row',alignItems:'center'}}><Text style={{width:240,color:palette.ink}}>{t.title}</Text><View style={{width:chartWidth,height:40,backgroundColor:palette.sage}}><View style={{position:'absolute',left:(day(t.startDate)-day(s.data.startDate!))/s.totalDays*chartWidth,width:Math.max(24,t.durationDays/s.totalDays*chartWidth),height:40,borderRadius:8,backgroundColor:t.status==='completed'?'#bcd5bf':t.status==='in_progress'?'#f0dca9':'#d8d3e8',justifyContent:'center'}}><Text style={{fontSize:12,color:palette.ink}}>{t.durationDays} дн.</Text></View></View></View>)}
     </View></ScrollView>}
     {tasks.map(t=><View key={t.id} style={{padding:18,borderWidth:1,borderColor:palette.line,borderRadius:16,gap:10}}><Heading>{t.title}</Heading><Body>{statuses[t.status]} · {date(t.startDate)} — {date(t.endDate)}{'\n'}Первоначально: {date(t.baselineStart)} — {date(t.baselineEnd)}{'\n'}Потрачено на этап: {rub(s.data.expenses.filter(e=>e.taskId===t.id).reduce((n,e)=>n+e.amount,0))}</Body>
+     {gallery(s.data.history.filter(e=>e.taskId===t.id).flatMap(e=>e.photoIds??[]))}
      {t.status==='in_progress'&&<Button label="Завершить этап" disabled={busy} onPress={()=>change({action:'complete',caption:'Завершение этапа',taskId:t.id,date:today(),reason:''})}/>}
      {t.status!=='completed'&&<Button label="Изменить дату начала" secondary disabled={busy} onPress={()=>change({action:'reschedule',caption:'Изменить дату начала этапа',taskId:t.id,date:t.startDate})}/>}
      {t.status!=='completed'&&<Button label="Продлить этап" secondary disabled={busy} onPress={()=>change({action:'shift',caption:'Перенос этапа',taskId:t.id,days:'3',reason:''})}/>}

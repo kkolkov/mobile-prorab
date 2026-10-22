@@ -25,6 +25,38 @@ class ExecutionApiTest {
   call(path+"/activate?version="+p.get("version").asLong(),Map.of(),200);return path+"/execution";
  }
  JsonNode command(String path,String action,JsonNode s,Map<String,Object> data)throws Exception{var b=new HashMap<>(data);b.put("version",s.get("version").asLong());return call(path+"/"+action,b,200);}
+ String photo()throws Exception{
+  var image=new java.awt.image.BufferedImage(20,10,java.awt.image.BufferedImage.TYPE_INT_RGB);
+  var out=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(image,"png",out);
+  return "data:image/png;base64,"+Base64.getEncoder().encodeToString(out.toByteArray());
+ }
+ @Test void completionPhotosPersistPrivatelyAndDeleteWithProject()throws Exception{
+  String path=create();var s=command(path,"start",call(path,null,200),Map.of("date","2026-01-01"));
+  var before=s.deepCopy();var payload=Map.<String,Object>of("taskId","rough","date","2026-01-17","reason","Готово","photos",List.of(Map.of("dataUrl",photo())));
+  s=command(path,"complete",s,payload);assertEquals("completed",s.at("/data/tasks/0/status").asText());
+  String photoId=s.at("/data/history/1/photoIds/0").asText();assertFalse(photoId.isBlank());assertEquals("rough",s.at("/data/history/1/taskId").asText());
+  assertEquals(s.at("/data/tasks"),call(path,null,200).at("/data/tasks"));
+  assertFalse(s.toString().contains("base64"));
+  String imagePath=path+"/photos/"+photoId;
+  assertTrue(call(imagePath,null,200).get("dataUrl").asText().startsWith("data:image/jpeg;base64,"));
+  var stale=new HashMap<>(payload);stale.put("version",before.get("version").asLong());call(path+"/complete",stale,409);
+  UUID projectId=UUID.fromString(path.split("/")[3]);assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM stage_photos WHERE project_id=?",Integer.class,projectId));
+  String owner=token;token=null;call(imagePath,null,401);register();call(imagePath,null,404);
+  String other=create();call(other+"/photos/"+photoId,null,404);token=owner;
+  String project=path.replace("/execution","");var p=call(project,null,200);call(project+"/delete?version="+p.get("version").asLong(),Map.of(),200);
+  assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM stage_photos WHERE project_id=?",Integer.class,projectId));
+ }
+ @Test void invalidPhotosRollBackCompletionAndUploadedImages()throws Exception{
+  String path=create();var s=command(path,"start",call(path,null,200),Map.of("date","2026-01-01"));
+  var payload=new HashMap<String,Object>();payload.put("version",s.get("version").asLong());payload.put("taskId","rough");payload.put("date","2026-01-17");
+  var good=Map.of("dataUrl",photo());
+  payload.put("photos",Collections.nCopies(6,good));call(path+"/complete",payload,400);
+  payload.put("photos",List.of(good,Map.of("dataUrl","data:image/jpeg;base64,ZmFrZQ==")));call(path+"/complete",payload,400);
+  payload.put("photos",List.of(Map.of("dataUrl","data:image/svg+xml;base64,PHN2Zz4=")));call(path+"/complete",payload,400);
+  payload.put("photos",List.of(good));payload.put("days",1);call(path+"/shift",payload,400);
+  assertEquals(s.get("data"),call(path,null,200).get("data"));
+  assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM stage_photos WHERE project_id=?",Integer.class,UUID.fromString(path.split("/")[3])));
+ }
  @Test void planUsesAppliedSnapshotAndCalendarHasInclusiveDatesAndCascades()throws Exception{
   String path=create();var s=call(path,null,200);assertEquals(54,s.at("/data/budget/timePlan/totalDays").asInt());
   assertEquals(s.at("/data/budget/total/expected"),s.get("planBudget"));

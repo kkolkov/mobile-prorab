@@ -19,8 +19,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 @Service
 public class ExecutionService {
- private final ProjectRepository projects;private final ExecutionRepository executions;private final ObjectMapper json;
- public ExecutionService(ProjectRepository p,ExecutionRepository e,ObjectMapper j){projects=p;executions=e;json=j;}
+ private final ProjectRepository projects;private final ExecutionRepository executions;private final ObjectMapper json;private final StagePhotoService photos;
+ public ExecutionService(ProjectRepository p,ExecutionRepository e,ObjectMapper j,StagePhotoService photos){projects=p;executions=e;json=j;this.photos=photos;}
  @Transactional public ExecutionResponse get(UUID id){var p=project(id);return response(p,prepare(p));}
  @Transactional public ExecutionResponse command(UUID id,String action,ExecutionCommand c){
   var p=project(id);var record=prepare(p);var s=read(record.getStateJson(),ExecutionState.class);
@@ -30,7 +30,8 @@ public class ExecutionService {
    var e=prior.get();if(Objects.equals(e.title(),c.title())&&e.amount().compareTo(c.amount()==null?BigDecimal.ZERO:c.amount())==0&&Objects.equals(e.category(),c.category())&&Objects.equals(e.date(),c.date())&&Objects.equals(e.taskId(),c.taskId()))return response(p,record);
    throw new BusinessException("Этот идентификатор расхода уже использован");}}
   if(c.version()==null||c.version()!=record.getVersion())throw new ObjectOptimisticLockingFailureException(ProjectExecution.class,id);
-  var budget=s.budget();var start=s.startDate();String message;
+  if(!action.equals("complete")&&c.photos()!=null&&!c.photos().isEmpty())throw new BusinessException("Фотографии можно добавить при завершении этапа");
+  var budget=s.budget();var start=s.startDate();String message;List<UUID> newPhotos=List.of();
   switch(action){
    case "sync"->{
     var latest=estimate(p);if(latest==null||!Objects.equals(c.estimateId(),latest.id()))throw new BusinessException("Применённая смета изменилась. Обновите данные");
@@ -74,7 +75,7 @@ public class ExecutionService {
      if(!task.status().equals("in_progress"))throw new BusinessException("Сначала завершите предыдущий этап");
      date(c.date());if(c.date().isBefore(task.startDate())||c.date().isAfter(LocalDate.now()))throw new BusinessException("Дата завершения должна быть между началом этапа и сегодняшним днём");
      if(task.id().equals("drying")&&c.date().isBefore(task.endDate()))throw new BusinessException("Технологическая пауза ещё не закончилась");
-     end=c.date();message="Завершён этап «"+task.title()+"»: "+end;
+     newPhotos=photos.save(id,c.photos());end=c.date();message="Завершён этап «"+task.title()+"»: "+end;
     }
     String reason=c.reason()==null?"":c.reason().trim();if(!reason.isEmpty())message+=". "+reason;
     tasks.set(index,new Task(task.id(),task.title(),(int)ChronoUnit.DAYS.between(task.startDate(),end)+1,task.baselineStart(),task.baselineEnd(),task.startDate(),end,action.equals("complete")?"completed":task.status(),action.equals("complete")?end:null,task.dependencies()));
@@ -97,7 +98,7 @@ public class ExecutionService {
    case "remove-expense"->{if(!expenses.removeIf(e->e.id().equals(c.expenseId())))throw new BusinessException("Расход не найден");message="Удалён расход";}
    default->throw new BusinessException("Неизвестная операция");
   }
-  history.add(new Event(Instant.now(),message));
+  history.add(new Event(Instant.now(),message,action.equals("complete")?c.taskId():null,newPhotos));
   record.setStateJson(write(new ExecutionState(budget,start,List.copyOf(tasks),List.copyOf(expenses),List.copyOf(history))));executions.saveAndFlush(record);return response(p,record);
  }
  private ExecutionResponse response(Project p,ProjectExecution record){

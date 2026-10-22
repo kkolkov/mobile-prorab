@@ -6,5 +6,5 @@ import ru.prorab.refinement.dto.RefinedEstimate;
 public record ExecutionState(RefinedEstimate budget,LocalDate startDate,List<Task> tasks,List<Expense> expenses,List<Event> history) {
  public record Task(String id,String title,int durationDays,LocalDate baselineStart,LocalDate baselineEnd,LocalDate startDate,LocalDate endDate,String status,LocalDate completedDate,List<String> dependencies){}
  public record Expense(UUID id,String title,BigDecimal amount,String category,LocalDate date,String taskId){}
- public record Event(Instant at,String message){}
+ public record Event(Instant at,String message,String taskId,List<UUID> photoIds){public Event {photoIds=photoIds==null?List.of():List.copyOf(photoIds);}}
 }

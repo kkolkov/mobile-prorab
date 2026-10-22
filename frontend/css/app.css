@@ -154,3 +154,5 @@ progress.over-budget { accent-color:#b3261e; }
 dialog {border:1px solid #d6ded5;border-radius:24px;padding:28px;max-width:520px;width:calc(100% - 40px);background:#faf9f5;color:#263c31;box-sizing:border-box;box-shadow:0 20px 70px #263c3133;}
 dialog::backdrop {background:#1f302d66;}
 dialog .actions {position:static;display:flex;gap:12px;flex-wrap:wrap;}
+
+.stage-photos{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0}.stage-photo{flex:1 1 180px;max-width:360px;min-width:0;display:flex;flex-direction:column;gap:8px}.stage-photo img{width:100%;max-height:360px;object-fit:contain;border-radius:12px;background:var(--surface,#f4f5f1)}
