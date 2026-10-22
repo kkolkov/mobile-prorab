@@ -25,6 +25,25 @@ class ExecutionApiTest {
   call(path+"/activate?version="+p.get("version").asLong(),Map.of(),200);return path+"/execution";
  }
  JsonNode command(String path,String action,JsonNode s,Map<String,Object> data)throws Exception{var b=new HashMap<>(data);b.put("version",s.get("version").asLong());return call(path+"/"+action,b,200);}
+ @org.springframework.test.context.bean.override.mockito.MockitoBean ru.prorab.execution.service.OcrSpaceClient ocr;
+ @Test void receiptRecognitionDoesNotCreateExpenseAndAttachmentSurvivesEditAndRetry()throws Exception{
+  String path=create();var before=call(path,null,200);
+  org.mockito.Mockito.when(ocr.recognize(org.mockito.ArgumentMatchers.any())).thenReturn("ООО Строймагазин\n22.10.2025\nИТОГО 1234.50\nНАЛИЧНЫМИ 2000.00");
+  var image=Map.of("dataUrl",photo());var suggestion=call(path+"/receipt/recognize",image,200);assertEquals(1234.5,suggestion.get("amount").asDouble());
+  assertEquals(before,call(path,null,200));assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM stage_photos WHERE project_id=?",Integer.class,UUID.fromString(path.split("/")[3])));
+  var payload=new HashMap<String,Object>();payload.put("expenseId",UUID.randomUUID());payload.put("title","Покупка");payload.put("amount",1234.50);payload.put("date","2025-10-22");payload.put("category","rough");payload.put("receipt",image);
+  var saved=command(path,"expense",before,payload);String photoId=saved.at("/data/expenses/0/receiptPhotoId").asText();assertFalse(photoId.isBlank());
+  assertEquals(1,command(path,"expense",before,payload).at("/data/expenses").size());
+  assertTrue(call(path+"/photos/"+photoId,null,200).get("dataUrl").asText().startsWith("data:image/jpeg;base64,"));
+  payload.remove("receipt");payload.put("amount",1300);saved=command(path,"edit-expense",saved,payload);assertEquals(photoId,saved.at("/data/expenses/0/receiptPhotoId").asText());
+  String owner=token;register();call(path+"/receipt/recognize",image,404);call(path+"/photos/"+photoId,null,404);token=owner;
+  saved=command(path,"remove-expense",saved,Map.of("expenseId",payload.get("expenseId")));call(path+"/photos/"+photoId,null,404);assertEquals(0,saved.at("/data/expenses").size());
+ }
+ @Test void invalidReceiptAndConflictCannotCreatePartialExpense()throws Exception{
+  String path=create();var s=call(path,null,200);var payload=new HashMap<String,Object>();payload.put("expenseId",UUID.randomUUID());payload.put("title","Покупка");payload.put("amount",100);payload.put("date","2025-10-22");payload.put("category","rough");payload.put("version",s.get("version").asLong());payload.put("receipt",Map.of("dataUrl","not-an-image"));
+  call(path+"/expense",payload,400);assertEquals(s,call(path,null,200));
+  payload.put("receipt",Map.of("dataUrl",photo()));payload.put("version",999);call(path+"/expense",payload,409);assertEquals(s,call(path,null,200));
+ }
  String photo()throws Exception{
   var image=new java.awt.image.BufferedImage(20,10,java.awt.image.BufferedImage.TYPE_INT_RGB);
   var out=new java.io.ByteArrayOutputStream();javax.imageio.ImageIO.write(image,"png",out);

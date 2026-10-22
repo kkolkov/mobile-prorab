@@ -27,10 +27,11 @@ public class ExecutionService {
   var expenses=new ArrayList<>(s.expenses());var tasks=new ArrayList<>(s.tasks());var history=new ArrayList<>(s.history());
   // Stable expense IDs make retry after a lost response safe; a different payload is never silently accepted.
   if(action.equals("expense")&&c.expenseId()!=null){var prior=expenses.stream().filter(e->e.id().equals(c.expenseId())).findFirst();if(prior.isPresent()){
-   var e=prior.get();if(Objects.equals(e.title(),c.title())&&e.amount().compareTo(c.amount()==null?BigDecimal.ZERO:c.amount())==0&&Objects.equals(e.category(),c.category())&&Objects.equals(e.date(),c.date())&&Objects.equals(e.taskId(),c.taskId()))return response(p,record);
+   var e=prior.get();if(Objects.equals(e.title(),c.title())&&e.amount().compareTo(c.amount()==null?BigDecimal.ZERO:c.amount())==0&&Objects.equals(e.category(),c.category())&&Objects.equals(e.date(),c.date())&&Objects.equals(e.taskId(),c.taskId())&&photos.sameReceipt(id,e.receiptPhotoId(),c.receipt()))return response(p,record);
    throw new BusinessException("Этот идентификатор расхода уже использован");}}
   if(c.version()==null||c.version()!=record.getVersion())throw new ObjectOptimisticLockingFailureException(ProjectExecution.class,id);
   if(!action.equals("complete")&&c.photos()!=null&&!c.photos().isEmpty())throw new BusinessException("Фотографии можно добавить при завершении этапа");
+  if(!action.equals("expense")&&c.receipt()!=null)throw new BusinessException("Чек прикрепляется при создании расхода");
   var budget=s.budget();var start=s.startDate();String message;List<UUID> newPhotos=List.of();
   switch(action){
    case "sync"->{
@@ -91,11 +92,13 @@ public class ExecutionService {
     if(!Set.of("rough","finish","labor","extra").contains(Objects.toString(c.category(),"")))throw new BusinessException("Выберите категорию расхода");
     date(c.date());if(c.date().isAfter(LocalDate.now()))throw new BusinessException("Фактический расход не может быть в будущем");
     if(c.taskId()!=null&&tasks.stream().noneMatch(t->t.id().equals(c.taskId())))throw new BusinessException("Этап расхода не найден");
-    var expense=new Expense(c.expenseId(),c.title().trim(),c.amount().setScale(2),c.category(),c.date(),c.taskId());
+    var previous=expenses.stream().filter(e->e.id().equals(c.expenseId())).findFirst().orElse(null);
+    UUID receiptId=action.equals("edit-expense")?(previous==null?null:previous.receiptPhotoId()):(c.receipt()==null?null:photos.saveReceipt(id,c.receipt()));
+    var expense=new Expense(c.expenseId(),c.title().trim(),c.amount().setScale(2),c.category(),c.date(),c.taskId(),receiptId);
     if(action.equals("edit-expense")){int i=-1;for(int j=0;j<expenses.size();j++)if(expenses.get(j).id().equals(c.expenseId()))i=j;if(i<0)throw new BusinessException("Расход не найден");expenses.set(i,expense);}else expenses.add(expense);
     message=action.equals("expense")?"Добавлен расход":"Изменён расход";
    }
-   case "remove-expense"->{if(!expenses.removeIf(e->e.id().equals(c.expenseId())))throw new BusinessException("Расход не найден");message="Удалён расход";}
+   case "remove-expense"->{expenses.stream().filter(e->e.id().equals(c.expenseId())).findFirst().ifPresent(e->photos.deleteReceipt(id,e.receiptPhotoId()));if(!expenses.removeIf(e->e.id().equals(c.expenseId())))throw new BusinessException("Расход не найден");message="Удалён расход";}
    default->throw new BusinessException("Неизвестная операция");
   }
   history.add(new Event(Instant.now(),message,action.equals("complete")?c.taskId():null,newPhotos));

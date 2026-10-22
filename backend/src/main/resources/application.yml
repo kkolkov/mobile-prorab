@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: "optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]"
   jackson:
     deserialization:
       accept-float-as-int: false

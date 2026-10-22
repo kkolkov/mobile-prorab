@@ -1,4 +1,6 @@
 import type {Estimate} from '../core/types';
 export interface Task {id:string;title:string;durationDays:number;baselineStart:string;baselineEnd:string;startDate:string;endDate:string;status:'planned'|'in_progress'|'completed';completedDate:string|null;dependencies:string[]}
-export interface Expense {id:string;title:string;amount:number;category:string;date:string;taskId:string|null}
+export interface Expense {id:string;title:string;amount:number;category:string;date:string;taskId:string|null;receiptPhotoId?:string|null}
 export interface Execution {projectId:string;version:number;data:{budget:Estimate|null;startDate:string|null;tasks:Task[];expenses:Expense[];history:{at:string;message:string;taskId?:string|null;photoIds?:string[]}[]};estimateAvailable:boolean;newerEstimate:boolean;scheduleAvailable:boolean;planBudget:number|null;budgetWithReserve:number|null;spentTotal:number;remainingBudget:number|null;remainingWithReserve:number|null;categories:{code:string;title:string;plan:number|null;spent:number}[];progressPercent:number;forecastEnd:string|null;totalDays:number}
+
+export interface ReceiptSuggestion {title:string|null;amount:number|null;date:string|null;warnings:string[]}

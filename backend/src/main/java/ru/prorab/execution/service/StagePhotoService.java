@@ -24,7 +24,15 @@ public class StagePhotoService {
   var photo=photos.findByIdAndProjectId(id,projectId).orElseThrow(()->new ResourceNotFoundException("Фотография не найдена"));
   return new StagePhotoInput("data:image/jpeg;base64,"+Base64.getEncoder().encodeToString(photo.getImage()));
  }
- private byte[] normalize(StagePhotoInput input){
+ public byte[] receiptBytes(StagePhotoInput input){return normalize(input,3200);}
+ @Transactional public UUID saveReceipt(UUID projectId,StagePhotoInput input){var id=UUID.randomUUID();photos.save(new StagePhoto(id,projectId,receiptBytes(input)));return id;}
+ @Transactional(readOnly=true) public boolean sameReceipt(UUID projectId,UUID id,StagePhotoInput input){
+  if(id==null)return input==null;if(input==null)return false;
+  return photos.findByIdAndProjectId(id,projectId).map(p->Arrays.equals(p.getImage(),receiptBytes(input))).orElse(false);
+ }
+ @Transactional public void deleteReceipt(UUID projectId,UUID id){if(id!=null)photos.findByIdAndProjectId(id,projectId).ifPresent(photos::delete);}
+ private byte[] normalize(StagePhotoInput input){return normalize(input,1600);}
+ private byte[] normalize(StagePhotoInput input,int maxSide){
   try{
    String value=input==null?null:input.dataUrl();
    if(value==null||value.length()>2800000||!(value.startsWith("data:image/jpeg;base64,")||value.startsWith("data:image/png;base64,")))throw new IOException();
@@ -36,7 +44,7 @@ public class StagePhotoService {
      reader.setInput(stream);String format=reader.getFormatName();
      if(!format.equalsIgnoreCase("JPEG")&&!format.equalsIgnoreCase("PNG"))throw new IOException();
      int w=reader.getWidth(0),h=reader.getHeight(0);if(w<1||h<1||w>3200||h>3200)throw new IOException();
-     var source=reader.read(0);double scale=Math.min(1,1600.0/Math.max(w,h));
+     var source=reader.read(0);double scale=Math.min(1,(double)maxSide/Math.max(w,h));
      var image=new BufferedImage(Math.max(1,(int)(w*scale)),Math.max(1,(int)(h*scale)),BufferedImage.TYPE_INT_RGB);
      var g=image.createGraphics();try{g.setColor(java.awt.Color.WHITE);g.fillRect(0,0,image.getWidth(),image.getHeight());g.drawImage(source,0,0,image.getWidth(),image.getHeight(),null);}finally{g.dispose();}
      var out=new ByteArrayOutputStream();ImageIO.write(image,"jpeg",out);return out.toByteArray();
