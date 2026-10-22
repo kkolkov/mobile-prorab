@@ -24,6 +24,15 @@ class UnitPriceCalculatorTest {
     }
     RefinedEstimate calc(RefinementData d){return calculator.calculate(UUID.randomUUID(),1,d,new AreaAllocator().allocate(project,d.apartment().areaM2(),d.rooms()));}
     Exteriors none(){return new Exteriors("none",Exterior.defaults(),Exterior.defaults());}
+    @Test void verifiedPricesChangeExplanationButDoNotClaimVerifiedGeometry(){
+        var input=data(Kitchen.defaults(),none());var before=calc(input);
+        assertTrue(before.assumptions().stream().anyMatch(n->n.contains("непроверенные базовые цены")));
+        jdbc.update("update price_matrix set verified=true");entityManager.clear();
+        var after=calc(input);
+        assertTrue(after.assumptions().stream().anyMatch(n->n.contains("проверенные")&&n.contains("коэффициенты остаются допущениями")));
+        assertFalse(after.assumptions().stream().anyMatch(n->n.contains("непроверенные базовые цены")));
+        assertTrue(after.demonstration());assertEquals(before.total(),after.total());assertNotEquals(before.pricingVersion(),after.pricingVersion());
+    }
     @Test void lineItemsReproduceTotalAndSplitExactly(){
         var result=calc(data(Kitchen.defaults(),none()));
         BigDecimal sum=BigDecimal.ZERO;

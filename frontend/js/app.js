@@ -31,7 +31,7 @@ async function cp6(){
  <div class="summary"><div><span class="muted">Проект</span><div class="big">${escapeText(p.name)}</div></div>
  <div><span class="muted">Бюджет</span><div class="big">${budget}</div></div>
  <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>
- <p>Ориентировочная оценка. Базовые цены условные, срок ориентировочный.</p>${estimateDetails(p.estimateDetails)}
+ <p>Ориентировочная оценка. Цены и допущения — в составе оценки. Срок ориентировочный.</p>${estimateDetails(p.estimateDetails)}
  ${failed?`<button class="secondary" id="fix-parameters">Исправить параметры</button><button class="secondary" id="retry-estimate" ${state.loading?'disabled':''}>Повторить расчёт</button>`:''}
  <button class="secondary" id="refine">Уточнить расчёт</button>
  <div class="notice">Площадь ${p.areaM2} м² · комнаты ${p.roomsCount??'—'} · санузлы ${p.bathroomsCount}</div>
@@ -55,7 +55,7 @@ async function goRefinement(){
 function db01(){
  const p=state.project;
  renderScreen(app,`<div class="top"><span class="brand">Мобильный прораб</span><span class="step">Проект</span></div><h1>${escapeText(p.name)}</h1>
- <div class="notice">Ориентировочная оценка. Базовые цены условные, срок ориентировочный.</div>
+ <div class="notice">Ориентировочная оценка. Цены и допущения — в составе оценки. Срок ориентировочный.</div>
  ${p.estimateStatus==='stale'?'<div class="notice">Активная смета рассчитана по прежним параметрам. Уточнённая смета применяется отдельно.</div>':''}
  <div class="summary"><div><span class="muted">Бюджет</span><div class="big">${p.budgetMinRub?money(p.budgetMinRub)+' — '+money(p.budgetMaxRub)+' ₽':'Пока не рассчитан'}</div></div>
  <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>

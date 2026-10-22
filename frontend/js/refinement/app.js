@@ -22,17 +22,17 @@ export async function openRefinement(app,project,onExit){
  }
  const emit=(name,section)=>window.dispatchEvent(new CustomEvent('prorab:analytics',{detail:{name,project_id:project.projectId,section}}));
  const draft=()=>drafts.get(view);
- function open(key){view=key;error='';conflict=false;if(!drafts.has(key)){
+ function open(key){if(busy)return;view=key;error='';conflict=false;if(!drafts.has(key)){
   let data=key==='rooms'?{rooms:copy(snapshot.data.rooms),roomCountManual:snapshot.data.roomCountManual}:copy(snapshot.data[key==='kitchen'?'kitchens':key]);
   if(key==='apartment')data.redevelopment??=snapshot.project.redevelopment??false;
   drafts.set(key,{data,version:snapshot.project.version,confirmedRemovals:[]});
  }if(key==='kitchen')kitchenId=Object.keys(draft().data)[0]??null;emit('refinement_section_opened',key);render();}
- function shell(body){app.innerHTML=`<div class="shell refinement"><div class="top"><b class="brand">Мобильный прораб</b><button class="secondary" data-action="exit">В проект</button></div><p>${esc(snapshot?.project.name||project.name)}</p><div class="notice demo">Ориентировочный расчёт. Базовые цены условные, объёмы без обмеров определяются по допущениям.</div>${body}<div role="alert" class="error">${esc(error)}</div>${conflict?'<div class="notice">Данные изменены в другом сеансе. Ваш ввод сохранён в форме.<button data-action="refresh-conflict">Загрузить актуальные данные, сохранив мой ввод</button></div>':''}</div>`;bind();}
+ function shell(body){app.innerHTML=`<div class="shell refinement"><div class="top"><b class="brand">Мобильный прораб</b><button class="secondary" data-action="exit">В проект</button></div><p>${esc(snapshot?.project.name||project.name)}</p><div class="notice demo">Ориентировочный расчёт. Цены и допущения — в составе оценки. Объёмы без обмеров определяются по допущениям.</div>${body}<div role="alert" class="error">${esc(error)}</div>${conflict?'<div class="notice">Данные изменены в другом сеансе. Ваш ввод сохранён в форме.<button data-action="refresh-conflict">Загрузить актуальные данные, сохранив мой ввод</button></div>':''}</div>`;bind();}
  function render(){
   clearTimeout(timer);if(closed)return;
   if(!snapshot){shell('<p>Загружаем проект…</p>');return;}
   if(view==='menu'){
-   shell(`<h1>Уточнение параметров проекта</h1><p>Выберите, какие данные хотите уточнить</p><div class="grid">${Object.entries(sections).map(([key,[title,text]])=>`<button class="card" data-open="${key}"><b>${title}</b><span>${text}</span><strong>${snapshot.data.updatedSections?.includes(key)?'Данные указаны и обновлены':snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}</strong>${drafts.has(key)?'<small>Есть несохранённый ввод</small>':''}</button>`).join('')}</div><section class="notice"><p role="status">${esc(snapshot.calculationMessage)}</p>${snapshot.activeEstimateOutdated?'<p>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</p>':''}${snapshot.calculationStatus==='ready'?'<button data-action="compare" class="primary">Посмотреть расчёт</button>':''}${['failed','stale'].includes(snapshot.calculationStatus)?'<button data-action="retry" class="primary">Повторить расчёт</button>':''}</section>`);
+   shell(`<h1>Уточнение параметров проекта</h1><p>Выберите, какие данные хотите уточнить</p><div class="grid">${Object.entries(sections).map(([key,[title,text]])=>`<button class="card" data-open="${key}"><b>${title}</b><span>${text}</span><strong>${snapshot.data.updatedSections?.includes(key)?'Данные указаны и обновлены':snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}</strong>${drafts.has(key)?'<small>Есть несохранённый ввод</small>':''}</button>`).join('')}</div><section class="notice"><p role="status">${esc(snapshot.calculationMessage)}</p>${snapshot.activeEstimateOutdated?'<p>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</p>':''}${snapshot.calculationStatus==='ready'?'<button data-action="compare" class="primary">Посмотреть расчёт</button>':''}${snapshot.calculationStatus!=='pending'?`<button data-action="retry" class="secondary">${['failed','stale'].includes(snapshot.calculationStatus)?'Повторить расчёт':'Пересчитать по текущим ценам'}</button>`:''}</section>`);
    if(snapshot.calculationStatus==='pending')timer=setTimeout(poll,800);return;
   }
   if(view==='compare'){comparison();return;}
@@ -81,6 +81,7 @@ export async function openRefinement(app,project,onExit){
   };
  }
  async function action(name){
+  if(busy)return;
   if(name==='exit'){if(busy)return;closed=true;clearTimeout(timer);history.replaceState(null,'',`#project=${project.projectId}`);onExit(snapshot?.project??project);return;}
   if(name==='back'){if(busy)return;error='';conflict=false;if(roomEditor)roomEditor=null;else view='menu';render();return;}
   if(name==='compare'){view='compare';render();return;}

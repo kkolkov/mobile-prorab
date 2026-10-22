@@ -110,7 +110,7 @@ export default function Refinement() {
       <Notice>{snapshot.calculationMessage}</Notice>
       {snapshot.activeEstimateOutdated&&<Notice>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</Notice>}
       {snapshot.calculationStatus==='ready'&&<Button label="Посмотреть расчёт" onPress={()=>setView('compare')} disabled={busy}/>}
-      {['failed','stale','not_requested'].includes(snapshot.calculationStatus)&&<Button label="Повторить расчёт" disabled={busy} onPress={()=>run(async()=>{setSnapshot(await api.calculate(snapshot));emit({name:'refinement_estimate_requested',projectId:id});})}/>}
+      {snapshot.calculationStatus!=='pending'&&<Button label={['failed','stale'].includes(snapshot.calculationStatus)?'Повторить расчёт':'Пересчитать по текущим ценам'} disabled={busy} onPress={()=>run(async()=>{setSnapshot(await api.calculate(snapshot));emit({name:'refinement_estimate_requested',projectId:id});})}/>}
     </>}
     {section&&!d&&snapshot&&<Button label="Открыть раздел" onPress={()=>open(section)}/>}
     {d&&snapshot&&view==='apartment'&&<ApartmentForm value={drafts.apartment!.data} onChange={v=>change('apartment',v)} disabled={busy}/>}

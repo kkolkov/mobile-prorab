@@ -88,7 +88,7 @@ export function Counter({label,value,onChange,min=1,max=20,disabled}: {label:str
   </View></View>;
 }
 export const Notice=({children}:React.PropsWithChildren)=> <View style={styles.notice}><Text style={styles.text}>{children}</Text></View>;
-export const Demo=()=> <Notice>Ориентировочная оценка. Базовые цены условные, срок ориентировочный.</Notice>;
+export const Demo=()=> <Notice>Ориентировочная оценка. Цены и допущения — в составе оценки. Срок ориентировочный.</Notice>;
 export const ErrorText=({message}:{message:string})=>message?<Text accessibilityRole="alert" style={styles.error}>{message}</Text>:null;
 export const Heading=({children}:React.PropsWithChildren)=><Text accessibilityRole="header" style={styles.h2}>{children}</Text>;
 export const Body=({children}:React.PropsWithChildren)=><Text style={styles.text}>{children}</Text>;

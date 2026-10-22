@@ -15,7 +15,15 @@ public class PriceMatrixEntry {
     private BigDecimal laborShare;
     private String sourceNote;
     private LocalDate priceDate;
+    @Version private Long version;
+    private boolean verified;
+    public long getVersion(){return version==null?0:version;}
+    public boolean isVerified(){return verified;}
     protected PriceMatrixEntry() {}
+    public PriceMatrixEntry(String code,String title,String unit){this.code=code;this.title=title;this.unit=unit;}
+    public void update(BigDecimal price,BigDecimal rough,BigDecimal labor,String source,LocalDate date,boolean verified){
+        unitPriceRub=price;roughShare=rough;laborShare=labor;sourceNote=source;priceDate=date;this.verified=verified;
+    }
     public String getCode(){return code;}
     public String getTitle(){return title;}
     public String getUnit(){return unit;}
