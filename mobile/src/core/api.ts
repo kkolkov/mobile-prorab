@@ -8,7 +8,7 @@ import type { Project, Snapshot, Section } from './types';
 
 const hostUri = Platform.OS==='web' && typeof window!=='undefined' ? window.location.origin : Constants.expoConfig?.hostUri;
 export const API_BASE = apiBase(process.env.EXPO_PUBLIC_API_URL, hostUri);
-export const request = createRequest(API_BASE, fetch, 15000, authHeaders, expireSession);
+export const request = createRequest(API_BASE, fetch, 120000, authHeaders, expireSession);
 export const api = {
   login: (login:string,password:string,register=false,privacyAccepted=false) => request<AuthSession>(`/auth/${register?'register':'login'}`,{login,password,...(register?{privacyAccepted}:{})}),
   me: () => request<{userId:string;login:string}>('/auth/me'),

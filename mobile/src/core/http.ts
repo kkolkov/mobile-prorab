@@ -2,7 +2,7 @@ export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
-export function createRequest(base: string, transport: typeof fetch = fetch, timeoutMs = 15000, headers:()=>Promise<Record<string,string>> = async()=>({}), unauthorized:()=>Promise<void> = async()=>{}) {
+export function createRequest(base: string, transport: typeof fetch = fetch, timeoutMs = 120000, headers:()=>Promise<Record<string,string>> = async()=>({}), unauthorized:()=>Promise<void> = async()=>{}) {
   return async function request<T>(path: string, body?: unknown, method = 'POST'): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -21,7 +21,9 @@ export function createRequest(base: string, transport: typeof fetch = fetch, tim
       return data;
     } catch (error) {
       if (error instanceof ApiError) throw error;
-      throw new ApiError('Не удалось связаться с сервером. Ваш ввод остался в форме. Проверьте Wi-Fi и повторите попытку.', 0);
+      throw new ApiError(controller.signal.aborted
+        ? 'Сервер не ответил за две минуты. Ваш ввод остался в форме. Попробуйте ещё раз чуть позже.'
+        : 'Не удалось связаться с сервером. Ваш ввод остался в форме. Проверьте подключение к интернету или попробуйте другую сеть.', 0);
     } finally { clearTimeout(timer); }
   };
 }

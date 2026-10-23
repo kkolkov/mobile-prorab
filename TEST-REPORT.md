@@ -1,3 +1,15 @@
+## Android build 5 — 23 октября 2026
+
+- Typecheck/lint и mobile unit: 13/13.
+- Публичный API через мобильный HTTP-клиент: регистрация, вход, /auth/me, выход прошли.
+- Медленный ответ Render /api/auth/me: 89,9 секунды, HTTP 401 без токена, ожидаемо.
+- APK EAS cb630d6e-9d7e-4923-bc14-5fa24542200c: FINISHED.
+- ZIP CRC и apksigner verify: успешно; v2, прежний сертификат (сравнение с build3).
+- Package ru.prorab.mobile, versionCode 5, minSdk24, target36; INTERNET присутствует.
+- В JS/Hermes артефакте присутствует https://mobile-prorab.onrender.com/api.
+- SHA256: 2337083263671415301955f6631a1f854962e697f81f2ae80f8e678a8b2e9a68.
+- На физическом Android установка/вход ещё не проверены.
+
 ## Сетка истории расходов — 22 октября 2026
 
 - WEB/Expo: одинаковые размеры кнопок; на телефоне чек отдельной строкой.

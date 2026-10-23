@@ -29,6 +29,7 @@ test('Only untouched automatic rooms may be removed automatically',()=>{
   assert.equal(emptyRoom({...r,automatic:false}),false);assert.equal(emptyRoom({...r,walls:'paint'}),false);
 });
 test('iPhone backend uses Metro host, with explicit URL override',()=>{
+  assert.equal(apiBase(undefined,undefined),'https://mobile-prorab.onrender.com/api');
   assert.equal(apiBase(undefined,'192.168.1.9:8081'),'http://192.168.1.9:8081/prorab-api');
   assert.equal(apiBase(undefined,'http://192.168.1.9:8081'),'http://192.168.1.9:8081/prorab-api');
   assert.equal(apiBase(undefined,'random-name-8081.exp.direct'),'https://random-name-8081.exp.direct/prorab-api');
@@ -48,5 +49,12 @@ test('API network failure and timeout are recoverable, never automatically repea
   const failing=createRequest('',async()=>{throw new TypeError('Network failed');});
   await assert.rejects(failing('/draft',{areaM2:33}),/Ваш ввод остался/);
   const timeout=createRequest('',async(_url,options)=>new Promise((_resolve,reject)=>options?.signal?.addEventListener('abort',()=>reject(new Error('timeout')))),5);
-  await assert.rejects(timeout('/draft',{areaM2:33}),e=>e instanceof ApiError&&e.status===0);
+  await assert.rejects(timeout('/draft',{areaM2:33}),e=>e instanceof ApiError&&e.status===0&&/Сервер не ответил/.test(e.message));
+});
+
+test('Slow server response remains successful and login is sent only once',async()=>{
+ let calls=0;
+ const request=createRequest('https://server/api',async()=>{calls++;await new Promise(resolve=>setTimeout(resolve,30));return new Response('{"ok":true}');},100);
+ assert.deepEqual(await request('/auth/login',{login:'example',password:'example-password'}),{ok:true});
+ assert.equal(calls,1);
 });
