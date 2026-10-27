@@ -21,6 +21,15 @@ import java.util.*;
 public class ExecutionService {
  private final ProjectRepository projects;private final ExecutionRepository executions;private final ObjectMapper json;private final StagePhotoService photos;
  public ExecutionService(ProjectRepository p,ExecutionRepository e,ObjectMapper j,StagePhotoService photos){projects=p;executions=e;json=j;this.photos=photos;}
+ @Transactional(readOnly=true) public Map<UUID,Integer> progressFor(Collection<UUID> ids){
+  Map<UUID,Integer> result=new HashMap<>();
+  for(var record:executions.findAllById(ids)){
+   var state=read(record.getStateJson(),ExecutionState.class);
+   if(state.startDate()!=null&&!state.tasks().isEmpty())result.put(record.getProjectId(),progress(state));
+  }
+  return result;
+ }
+ static int progress(ExecutionState state){return state.tasks().isEmpty()?0:(int)(100*state.tasks().stream().filter(t->t.status().equals("completed")).count()/state.tasks().size());}
  @Transactional public ExecutionResponse get(UUID id){var p=project(id);return response(p,prepare(p));}
  @Transactional public ExecutionResponse command(UUID id,String action,ExecutionCommand c){
   var p=project(id);var record=prepare(p);var s=read(record.getStateJson(),ExecutionState.class);
@@ -113,7 +122,7 @@ public class ExecutionService {
   BigDecimal[] plans={details==null?null:details.roughMaterials(),details==null?null:details.finishMaterials(),details==null?null:details.labor(),BigDecimal.ZERO};
   for(int i=0;i<keys.length;i++){String key=keys[i];categories.add(new ExecutionResponse.Category(key,names[i],plans[i],s.expenses().stream().filter(e->e.category().equals(key)).map(Expense::amount).reduce(BigDecimal.ZERO,BigDecimal::add)));}
   LocalDate end=s.tasks().isEmpty()?null:s.tasks().getLast().endDate();int days=end==null?0:(int)ChronoUnit.DAYS.between(s.startDate(),end)+1;
-  int progress=s.tasks().isEmpty()?0:(int)(100*s.tasks().stream().filter(t->t.status().equals("completed")).count()/s.tasks().size());
+  int progress=progress(s);
   return new ExecutionResponse(p.getProjectId(),record.getVersion(),s,latest!=null,latest!=null&&(b==null||!latest.id().equals(b.id())),b!=null&&b.timePlan()!=null,plan,reserve,spent,plan==null?null:plan.subtract(spent),reserve==null?null:reserve.subtract(spent),categories,progress,end,days);
  }
  private Project project(UUID id){var p=projects.findForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Проект не найден"));if(p.getStatus()!=ProjectStatus.ACTIVE)throw new BusinessException("Сначала сохраните проект");return p;}

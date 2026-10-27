@@ -26,6 +26,23 @@ class ExecutionApiTest {
  }
  JsonNode command(String path,String action,JsonNode s,Map<String,Object> data)throws Exception{var b=new HashMap<>(data);b.put("version",s.get("version").asLong());return call(path+"/"+action,b,200);}
  @org.springframework.test.context.bean.override.mockito.MockitoBean ru.prorab.execution.service.OcrSpaceClient ocr;
+ @Test void projectListProgressAppearsOnlyAfterStartAndMatchesSchedule()throws Exception{
+  String path=create();
+  assertTrue(call("/api/projects",null,200).get(0).get("executionProgressPercent").isNull());
+  var state=call(path,null,200);
+  assertTrue(call("/api/projects",null,200).get(0).get("executionProgressPercent").isNull());
+  state=command(path,"start",state,Map.of("date","2026-01-01"));
+  assertEquals(0,call("/api/projects",null,200).get(0).get("executionProgressPercent").asInt());
+  var tasks=state.at("/data/tasks").deepCopy();
+  for(var task:tasks){
+   state=command(path,"complete",state,Map.of("taskId",task.get("id").asText(),"date",task.get("endDate").asText()));
+   var item=call("/api/projects",null,200).get(0);
+   assertEquals(state.get("progressPercent"),item.get("executionProgressPercent"));
+   assertTrue(item.hasNonNull("projectId"));
+  }
+  assertEquals(100,state.get("progressPercent").asInt());
+  register();assertEquals(0,call("/api/projects",null,200).size());
+ }
  @Test void receiptRecognitionDoesNotCreateExpenseAndAttachmentSurvivesEditAndRetry()throws Exception{
   String path=create();var before=call(path,null,200);
   org.mockito.Mockito.when(ocr.recognize(org.mockito.ArgumentMatchers.any())).thenReturn("ООО Строймагазин\n22.10.2025\nИТОГО 1234.50\nНАЛИЧНЫМИ 2000.00");

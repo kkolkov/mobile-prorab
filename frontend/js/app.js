@@ -1,3 +1,4 @@
+import {projectCard,bindProjectCards} from './project-card.js';
 import {estimateDetails} from './estimate-details.js';
 import {durationRange,projectsSubtitle} from './display.js';
 import {deleteProject} from './delete-project.js';
@@ -76,7 +77,8 @@ export async function start(){
 
 async function home(){
  const projects=await api.list();
- renderScreen(app,`<div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a></div><h1>Мои проекты</h1><p>${projectsSubtitle(projects)}</p><button class="primary" id="create-project">Создать проект</button><div class="grid project-grid">${projects.map(p=>`<div class="project-tile"><button class="card" data-project="${p.projectId}"><b>${escapeText(p.name)}</b><span>${p.status==='draft'?'Черновик':'Проект'}</span></button><button class="secondary" data-rename="${p.projectId}" aria-label="Переименовать: ${escapeText(p.name)}">Переименовать</button><button class="secondary" data-delete="${p.projectId}" aria-label="Удалить: ${escapeText(p.name)}">Удалить</button></div>`).join('')}</div>${!projects.length?'<div class="empty-state"><p>Здесь появятся ваши проекты.</p></div>':''}`);
+ renderScreen(app,`<div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a></div><h1>Мои проекты</h1><p>${projectsSubtitle(projects)}</p><button class="primary" id="create-project">Создать проект</button><div class="grid project-grid">${projects.map(projectCard).join('')}</div>${!projects.length?'<div class="empty-state"><p>Здесь появятся ваши проекты.</p></div>':''}`);
+ bindProjectCards(app);
  app.querySelector('#create-project').onclick=()=>{state.project=null;state.projectId=null;state.local={};state.step=1;state.loading=false;state.error='';newProjectAnswers=emptyAnswers();showNewQuestionnaire();};
  app.querySelectorAll('[data-delete]').forEach(button=>button.onclick=()=>deleteProject(projects.find(p=>p.projectId===button.dataset.delete),home));
  app.querySelectorAll('[data-rename]').forEach(button=>button.onclick=()=>renameProject(app,projects.find(p=>p.projectId===button.dataset.rename),home));

@@ -8,6 +8,7 @@ public class ProjectExecution {
  @Column(nullable=false,columnDefinition="text") private String stateJson;
  protected ProjectExecution(){}
  public ProjectExecution(UUID id,String state){projectId=id;stateJson=state;}
+ public UUID getProjectId(){return projectId;}
  public long getVersion(){return version;}
  public String getStateJson(){return stateJson;}
  public void setStateJson(String state){stateJson=state;}

@@ -20,11 +20,13 @@ import java.util.UUID;
 public class ProjectService {
     private final ProjectRepository repository;
     private final ProjectMapper mapper;
+    private final ru.prorab.execution.service.ExecutionService executions;
     private final EstimateService estimateService;
     private final ru.prorab.pricing.service.EstimateSnapshots estimateSnapshots;
     private final ru.prorab.refinement.repository.RefinementRepository refinements;
 
-    public ProjectService(ProjectRepository repository, ProjectMapper mapper, EstimateService estimateService, ru.prorab.refinement.repository.RefinementRepository refinements, ru.prorab.onboarding.service.AccessService access, ru.prorab.pricing.service.EstimateSnapshots estimateSnapshots) {
+    public ProjectService(ProjectRepository repository, ProjectMapper mapper, EstimateService estimateService, ru.prorab.refinement.repository.RefinementRepository refinements, ru.prorab.onboarding.service.AccessService access, ru.prorab.pricing.service.EstimateSnapshots estimateSnapshots, ru.prorab.execution.service.ExecutionService executions) {
+        this.executions=executions;
         this.estimateSnapshots=estimateSnapshots;
         this.repository = repository; this.mapper = mapper; this.estimateService = estimateService; this.refinements = refinements; this.access = access;
     }
@@ -70,7 +72,11 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<ProjectResponse> list(UUID userId) { return repository.findByOwnerIdOrderByUpdatedAtDesc(userId).stream().map(mapper::toResponse).toList(); }
+    public java.util.List<ProjectListResponse> list(UUID userId) {
+        var projects=repository.findByOwnerIdOrderByUpdatedAtDesc(userId);
+        var progress=executions.progressFor(projects.stream().filter(p->p.getStatus()!=ProjectStatus.DRAFT).map(Project::getProjectId).toList());
+        return projects.stream().map(p->new ProjectListResponse(mapper.toResponse(p),progress.get(p.getProjectId()))).toList();
+    }
 
     @Transactional(readOnly = true)
     public ProjectResponse get(UUID id) { return mapper.toResponse(find(id)); }

@@ -15,7 +15,7 @@ public class ProjectController {
     public ProjectController(ProjectService projectService, ru.prorab.onboarding.service.AccessService access) { this.projectService = projectService; this.access = access; }
 
     @GetMapping
-    public java.util.List<ProjectResponse> list(@RequestAttribute UUID userId) { return projectService.list(userId); }
+    public java.util.List<ProjectListResponse> list(@RequestAttribute UUID userId) { return projectService.list(userId); }
 
     @PostMapping("/draft")
     public ProjectResponse createDraft(@Valid @RequestBody CreateDraftRequest request, @RequestAttribute(value="userId", required=false) UUID user) {

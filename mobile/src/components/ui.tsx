@@ -46,16 +46,16 @@ export function Screen({title,subtitle,step,back,home,busy,children,scrollRef}: 
     </ScrollView>
   </KeyboardAvoidingView></SafeAreaView>;
 }
-export function Button({label,onPress,secondary=false,disabled=false,busy=false,testID,displayLabel}: {label:string;onPress:()=>void;secondary?:boolean;disabled?:boolean;busy?:boolean;testID?:string;displayLabel?:string}) {
+export function Button({label,onPress,secondary=false,disabled=false,busy=false,testID,displayLabel,danger=false}: {label:string;onPress:()=>void;secondary?:boolean;disabled?:boolean;busy?:boolean;testID?:string;displayLabel?:string;danger?:boolean}) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{disabled:disabled||busy,busy}} testID={testID}
-    disabled={disabled||busy} onPress={onPress} style={({pressed})=>[styles.button,secondary&&styles.secondary,(disabled||busy)&&styles.disabled,pressed&&{opacity:0.7}]}>
-    {busy?<ActivityIndicator color={secondary?palette.ink:'white'}/>:<Text style={[styles.buttonText,secondary&&{color:palette.ink}]}>{displayLabel??label}</Text>}
+    disabled={disabled||busy} onPress={onPress} style={({pressed})=>[styles.button,secondary&&styles.secondary,danger&&{backgroundColor:'#f7e9e7',borderColor:'#e6c7c3'},(disabled||busy)&&styles.disabled,pressed&&{opacity:0.7}]}>
+    {busy?<ActivityIndicator color={danger?'#923d40':secondary?palette.ink:'white'}/>:<Text style={[styles.buttonText,secondary&&{color:palette.ink},danger&&{color:'#923d40'}]}>{displayLabel??label}</Text>}
   </Pressable>;
 }
-export function Card({title,description,selected,onPress,disabled}: {title:string;description?:string;selected?:boolean;onPress:()=>void;disabled?:boolean}) {
+export function Card({title,description,selected,onPress,disabled,statusDescription=false}: {title:string;statusDescription?:boolean;description?:string;selected?:boolean;onPress:()=>void;disabled?:boolean}) {
   return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{selected,disabled}} aria-selected={selected} onPress={onPress} disabled={disabled}
     style={[styles.card,selected&&styles.selected,disabled&&styles.disabled]}>
-    <Text style={styles.label}>{title}{selected?' ✓':''}</Text>{description&&<Text style={styles.text}>{description}</Text>}
+    <Text style={styles.label}>{title}{selected?' ✓':''}</Text>{description&&<Text style={[styles.text,statusDescription&&{color:'#465a4f',fontWeight:'500'}]}>{description}</Text>}
   </Pressable>;
 }
 export function Field({label,value,onChange,numeric=false,required=false,scale=1,min=0,max=Infinity,placeholder,maxLength=100,disabled=false}: {

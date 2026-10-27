@@ -1,5 +1,7 @@
 export type Numeric = number | string | null;
 export interface Project {
+  executionProgressPercent?: number | null;
+  updatedAt?: string | null;
   estimateDetails?: Estimate | null;
   projectId: string; status: 'draft' | 'active'; completedStep: number;
   name: string; nameSource: 'auto' | 'user'; areaM2: number; address: string | null;
