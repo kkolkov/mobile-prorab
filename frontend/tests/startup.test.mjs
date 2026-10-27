@@ -14,6 +14,7 @@ test('CP-01 starts; AC-01/02 area controls Continue; AC-03 preserves custom name
     (await import('../js/app.js')).render();
     const html = elements.get('#app').innerHTML;
     assert.match(html, /Об объекте/);
+    assert.match(html, /<a class="brand" href="\/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб<\/a>/);
     assert.match(html, /Шаг 1 из 5/);
     assert.match(html, /id="primary" disabled/);
 

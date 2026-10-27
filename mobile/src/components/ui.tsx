@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,7 +38,7 @@ export function Screen({title,subtitle,step,back,home,busy,children,scrollRef}: 
 }>) {
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
     <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
-      <View style={styles.masthead}><View style={styles.row}><View style={styles.logo}><Text style={{color:palette.surface,fontWeight:'700'}}>мп</Text></View><Text style={styles.brand}>Мобильный прораб</Text></View>{step && step<=5 ? <Text style={styles.step}>Шаг {step} из 5</Text>:null}</View>
+      <View style={styles.masthead}><Pressable accessibilityRole="button" accessibilityLabel="Мобильный прораб — Мои проекты" accessibilityState={{disabled:!!busy}} disabled={busy} onPress={home??(()=>router.replace('/'))} style={styles.row}><View style={styles.logo}><Text style={{color:palette.surface,fontWeight:'700'}}>мп</Text></View><Text style={styles.brand}>Мобильный прораб</Text></Pressable>{step && step<=5 ? <Text style={styles.step}>Шаг {step} из 5</Text>:null}</View>
       {(back || home) && <View style={styles.row}>{back && <Button label="Назад" secondary onPress={back} disabled={busy}/>}{home && <Button label="Мои проекты" secondary onPress={home} disabled={busy}/>}</View>}
       {step && step<=5 ? <View style={{height:6,backgroundColor:'#e0e7dc',borderRadius:4}}><View style={{height:6,width:`${step*20}%`,backgroundColor:'#66856b',borderRadius:4}}/></View>:null}
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>

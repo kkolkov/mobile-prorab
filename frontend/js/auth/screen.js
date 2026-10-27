@@ -4,7 +4,7 @@ export function showAuth(root,onSuccess){
  let register=false,busy=false,login='',password='',error='',consent=false;
  const esc=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function render(){
-  root.innerHTML=`<div class="shell auth-shell"><div class="brand">Мобильный прораб</div><h1>${register?'Создать аккаунт':'Вход'}</h1><p>${register?'Сохраните ваши проекты и продолжайте ремонт на любом устройстве.':'Войдите, чтобы продолжить работу над вашим ремонтом.'}</p>
+  root.innerHTML=`<div class="shell auth-shell"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><h1>${register?'Создать аккаунт':'Вход'}</h1><p>${register?'Сохраните ваши проекты и продолжайте ремонт на любом устройстве.':'Войдите, чтобы продолжить работу над вашим ремонтом.'}</p>
    <form id="auth-form"><div class="field"><label for="login">Логин</label><input id="login" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="40" value="${esc(login)}" placeholder="Например, prorab" ${busy?'disabled':''}></div>
    <div class="field"><label for="password">Пароль</label><input id="password" name="password" type="password" autocomplete="${register?'new-password':'current-password'}" maxlength="128" value="${esc(password)}" placeholder="Не менее 8 символов" aria-describedby="password-help" ${busy?'disabled':''}><small id="password-help">От 8 до 128 символов.</small></div>
    ${register?'<p class="muted">Логин: 3–40 символов — латиница, цифры, точка, дефис или подчёркивание.</p>':''}
@@ -20,7 +20,7 @@ export function showAuth(root,onSuccess){
   };
  }
  function showPolicy(){
-  root.innerHTML='<div class="shell auth-shell"><div class="brand">Мобильный прораб</div><h1>Политика обработки персональных данных</h1><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p><p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p><button class="secondary" id="privacy-back">Назад</button></div>';
+  root.innerHTML='<div class="shell auth-shell"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><h1>Политика обработки персональных данных</h1><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p><p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p><button class="secondary" id="privacy-back">Назад</button></div>';
   root.querySelector('#privacy-back').onclick=render;
  }
  function valid(){return (!register||consent)&&/^[a-zA-Z0-9._-]{3,40}$/.test(login.trim())&&password.length>=8&&password.length<=128;}
