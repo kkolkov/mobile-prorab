@@ -28,7 +28,7 @@ export function projectCardDetails(project: {status:string;completedStep?:number
  const completed=Math.max(0,Math.min(5,project.completedStep??0));
  const progress=project.status==='draft'
   ? {label:`Заполнено ${completed} из 5`,percent:completed*20,aria:'Заполнение проекта'}
-  : project.executionProgressPercent!=null?{label:'Этапы завершены',percent:project.executionProgressPercent,aria:'Выполнение этапов ремонта'}:null;
+  : project.executionProgressPercent!=null?{label:'Выполнено этапов',percent:project.executionProgressPercent,aria:'Выполнение этапов ремонта'}:null;
  const date=project.updatedAt?new Date(project.updatedAt):null;
  const updated=date&&!Number.isNaN(date.getTime())?`Изменён ${new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}).format(date)}`:null;
  return {budget,progress,updated};
