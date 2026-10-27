@@ -11,10 +11,10 @@ export function ProjectCard({project,onPress,onRename,onDelete,disabled}:{projec
  useEffect(()=>{if(Platform.OS!=='web'||!menu)return;const close=(event:KeyboardEvent)=>{if(event.key==='Escape')setMenu(false);};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[menu]);
  return <View style={{flex:1,padding:16,borderWidth:1,borderColor:palette.line,borderRadius:22,backgroundColor:palette.surface,transform:[{translateY:hover?-2:0}]}}>
   <Pressable accessibilityRole="button" accessibilityLabel={project.name} disabled={disabled} onPress={onPress} onHoverIn={()=>setHover(true)} onHoverOut={()=>setHover(false)} style={{flex:1}}>
-   <View style={{flex:1,minHeight:180,padding:20,borderRadius:20,gap:12,backgroundColor:tone}}>
-    <Text style={styles.h2}>{project.name}</Text>
+   <View style={{height:200,minHeight:200,padding:24,borderRadius:20,gap:12,backgroundColor:tone}}>
+    <Text numberOfLines={2} style={[styles.label,{fontSize:18,lineHeight:22}]}>{project.name}</Text>
     <Text style={{alignSelf:'flex-start',paddingHorizontal:10,paddingVertical:5,borderRadius:20,backgroundColor:'#fffefa99',color:'#465a4f',fontSize:12,fontWeight:'600'}}>{appearance.label}</Text>
-    <Text style={{color:empty?palette.muted:palette.ink,fontSize:empty?18:20,lineHeight:28,fontWeight:empty?'400':'600'}}>{details.budget}</Text>
+    <Text style={{marginTop:'auto',color:empty?'#465a4f':palette.ink,fontSize:empty?18:20,lineHeight:28,fontWeight:empty?'400':'600'}}>{details.budget}</Text>
    </View>
    <View style={{height:36,marginTop:16,gap:8,opacity:progress?1:0}} accessibilityElementsHidden={!progress} importantForAccessibility={progress?'auto':'no-hide-descendants'}>
     <View style={[styles.row,{justifyContent:'space-between'}]}><Text style={{color:'#465a4f',fontSize:13}}>{progress?.label??' '}</Text><Text style={{color:'#465a4f',fontSize:13,fontWeight:'600'}}>{progress?.percent??0}%</Text></View>

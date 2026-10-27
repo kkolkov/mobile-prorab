@@ -26,9 +26,9 @@ test('Project card colors follow lifecycle including started zero and completed 
 test('Project card shows saved budget and distinct draft versus repair progress',()=>{
  const draft=projectCardDetails({status:'draft',completedStep:2});
  assert.equal(draft.budget,'Смета ещё не рассчитана');
- assert.deepEqual(draft.progress,{label:'Шаг 3 из 5',percent:40,aria:'Заполнение проекта'});
+ assert.deepEqual(draft.progress,{label:'Заполнено 2 из 5',percent:40,aria:'Заполнение проекта'});
  assert.equal(projectCardDetails({status:'draft',completedStep:5}).progress?.percent,100);
- assert.equal(projectCardDetails({status:'draft',completedStep:5}).progress?.label,'Все 5 шагов заполнены');
+ assert.equal(projectCardDetails({status:'draft',completedStep:5}).progress?.label,'Заполнено 5 из 5');
  assert.equal(projectCardDetails({status:'active'}).progress,null);
  const active=projectCardDetails({status:'active',budgetMinRub:100,budgetMaxRub:200,executionProgressPercent:0,updatedAt:'2026-10-27T12:00:00Z'});
  assert.equal(active.budget,'100 — 200 ₽');assert.equal(active.progress?.percent,0);assert.equal(active.updated,'Изменён 27.10.2026');

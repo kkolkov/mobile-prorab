@@ -2,11 +2,16 @@ import {api} from './api.js';
 import {session,clearSession} from './auth/storage.js';
 import {showAuth} from './auth/screen.js';
 const app=document.querySelector('#app'),bar=document.querySelector('#account-bar');
+const toggle=bar.querySelector('#account-toggle'),menu=bar.querySelector('#account-menu');
+function closeAccount(){menu.hidden=true;toggle.setAttribute('aria-expanded','false');}
+toggle.onclick=()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden));};
+document.addEventListener('click',event=>{if(!event.target.closest('.account-user'))closeAccount();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu.hidden){closeAccount();toggle.focus();}});
 async function open(){
  if(!session()){bar.hidden=true;showAuth(app,open);return;}
  try{
   const me=await api.me();bar.hidden=false;bar.querySelector('#account-login').textContent=me.login;
-  bar.querySelector('#account-home').onclick=()=>{location.hash='';location.reload();};
+
   bar.querySelector('#logout').onclick=async()=>{try{await api.logout();}catch(e){if(e.status!==401){bar.querySelector('#account-error').textContent=e.message;return;}}clearSession();location.hash='';location.reload();};
   const {start}=await import('./app.js');await start();
  }catch(e){

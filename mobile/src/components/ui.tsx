@@ -33,12 +33,12 @@ export function Grid({children}:React.PropsWithChildren){
 export function Metric({label,value,tone='sage'}:{label:string;value:string;tone?:'sage'|'lavender'}){
  return <View style={[styles.metric,{backgroundColor:palette[tone]}]}><Text style={styles.text}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
 }
-export function Screen({title,subtitle,step,back,home,busy,children,scrollRef}: React.PropsWithChildren<{
-  title:string;subtitle?:string;step?:number;back?:()=>void;home?:()=>void;busy?:boolean;scrollRef?:React.Ref<ScrollView>;
+export function Screen({title,subtitle,step,back,home,busy,children,scrollRef,headerRight}: React.PropsWithChildren<{
+  title:string;subtitle?:string;step?:number;back?:()=>void;home?:()=>void;busy?:boolean;scrollRef?:React.Ref<ScrollView>;headerRight?:React.ReactNode;
 }>) {
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':undefined}>
     <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
-      <View style={styles.masthead}><Pressable accessibilityRole="button" accessibilityLabel="Мобильный прораб — Мои проекты" accessibilityState={{disabled:!!busy}} disabled={busy} onPress={home??(()=>router.replace('/'))} style={styles.row}><View style={styles.logo}><Text style={{color:palette.surface,fontWeight:'700'}}>мп</Text></View><Text style={styles.brand}>Мобильный прораб</Text></Pressable>{step && step<=5 ? <Text style={styles.step}>Шаг {step} из 5</Text>:null}</View>
+      <View style={[styles.masthead,!!headerRight&&{flexWrap:'nowrap'}]}><Pressable accessibilityRole="button" accessibilityLabel="Мобильный прораб — Мои проекты" accessibilityState={{disabled:!!busy}} disabled={busy} onPress={home??(()=>router.replace('/'))} style={[styles.row,!!headerRight&&{flex:1,flexWrap:'nowrap'}]}><View style={styles.logo}><Text style={{color:palette.surface,fontWeight:'700'}}>мп</Text></View><Text style={[styles.brand,!!headerRight&&{fontSize:13,flexShrink:1}]}>Мобильный прораб</Text></Pressable>{headerRight}{step && step<=5 ? <Text style={styles.step}>Шаг {step} из 5</Text>:null}</View>
       {(back || home) && <View style={styles.row}>{back && <Button label="Назад" secondary onPress={back} disabled={busy}/>}{home && <Button label="Мои проекты" secondary onPress={home} disabled={busy}/>}</View>}
       {step && step<=5 ? <View style={{height:6,backgroundColor:'#e0e7dc',borderRadius:4}}><View style={{height:6,width:`${step*20}%`,backgroundColor:'#66856b',borderRadius:4}}/></View>:null}
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>

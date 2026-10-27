@@ -1,6 +1,7 @@
+import {AccountMenu} from '../components/AccountMenu';
 import {ProjectCard} from '../components/ProjectCard';
 import {projectsSubtitle} from '../core/display';
-import {Modal,View} from 'react-native';
+import {Modal} from 'react-native';
 import {DeleteProject} from '../components/DeleteProject';
 import {RenameProject} from '../components/RenameProject';
 import {useAuth} from '../auth/AuthProvider';
@@ -10,7 +11,7 @@ import { api } from '../core/api';
 import { startWizard } from '../core/session';
 import { resumeStep } from '../core/rules';
 import type { Project } from '../core/types';
-import { Screen, Grid, styles, Button, Field, ErrorText, Body } from '../components/ui';
+import { Screen, Grid, Button, Field, ErrorText, Body } from '../components/ui';
 
 export default function Home() {
   const {user,signOut}=useAuth();
@@ -33,8 +34,7 @@ export default function Home() {
     setBusy(true);setError('');
     try{const p=await api.get(match[0]);open(p);}catch(e){setError((e as Error).message);}finally{setBusy(false);}
   }
-  return <Screen title="Мои проекты" subtitle={projectsSubtitle(projects)}>
-    <View style={[styles.row,{justifyContent:'space-between'}]}><Body>{user?.login}</Body><Button label="Выйти" secondary disabled={busy} onPress={async()=>{setBusy(true);try{await signOut();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}/></View>
+  return <Screen title="Мои проекты" subtitle={projectsSubtitle(projects)} headerRight={<AccountMenu login={user?.login??''} busy={busy} onLogout={async()=>{setBusy(true);try{await signOut();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}}/>}>
     <Button label="Создать проект" disabled={busy} onPress={()=>{startWizard();router.push('/questionnaire');}}/>
     <Grid>{projects.map(p=><ProjectCard key={p.projectId} project={p} onPress={()=>open(p)} onRename={()=>setRenaming(p)} onDelete={()=>setDeleting(p)} disabled={busy}/>)}</Grid>
     <Modal visible={!!deleting} animationType="slide" onRequestClose={()=>setDeleting(null)}>{deleting&&<DeleteProject project={deleting} onCancel={()=>setDeleting(null)} onDeleted={()=>{setProjects(items=>items.filter(p=>p.projectId!==deleting.projectId));setDeleting(null);}}/>}</Modal>
