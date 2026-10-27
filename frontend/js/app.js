@@ -77,7 +77,7 @@ export async function start(){
 
 async function home(){
  const projects=await api.list();
- renderScreen(app,`<div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a></div><h1>Мои проекты</h1><p>${projectsSubtitle(projects)}</p><button class="primary" id="create-project">Создать проект</button><div class="grid project-grid">${projects.map(projectCard).join('')}</div>${!projects.length?'<div class="empty-state"><p>Здесь появятся ваши проекты.</p></div>':''}`);
+ renderScreen(app,`<div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a></div><div class="projects-heading"><h1>Мои проекты</h1><p>${projectsSubtitle(projects)}</p><button class="primary" id="create-project">Создать проект</button></div><div class="grid project-grid">${projects.map(projectCard).join('')}</div>${!projects.length?'<div class="empty-state"><p>Здесь появятся ваши проекты.</p></div>':''}`);
  bindProjectCards(app);
  app.querySelector('#create-project').onclick=()=>{state.project=null;state.projectId=null;state.local={};state.step=1;state.loading=false;state.error='';newProjectAnswers=emptyAnswers();showNewQuestionnaire();};
  app.querySelectorAll('[data-delete]').forEach(button=>button.onclick=()=>deleteProject(projects.find(p=>p.projectId===button.dataset.delete),home));

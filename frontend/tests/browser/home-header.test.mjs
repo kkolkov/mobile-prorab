@@ -12,7 +12,10 @@ for(const width of [1280,390])test(`Home header stays on one row at ${width}px`,
  const brand=await page.locator('#account-brand').boundingBox(),user=await page.locator('#account-toggle').boundingBox();
  assert.ok(Math.abs(brand.y+brand.height/2-user.y-user.height/2)<2);
  assert.ok(brand.x+brand.width<=user.x);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- await page.locator('#account-toggle').click();await page.getByRole('button',{name:'Выйти',exact:true}).waitFor();await page.keyboard.press('Escape');assert.equal(await page.locator('#account-menu').isVisible(),false);
+ const title=await page.locator('.projects-heading h1').boundingBox(),create=await page.locator('#create-project').boundingBox(),subtitle=await page.locator('.projects-heading p').boundingBox();
+ if(width>=640)assert.ok(Math.abs(title.y+title.height/2-create.y-create.height/2)<2);else{assert.ok(create.y>=subtitle.y+subtitle.height);assert.equal(Math.round(create.width),Math.round(subtitle.width));}
+ const chevron=await page.locator('.account-chevron').boundingBox();assert.equal(chevron.width,16);assert.equal(chevron.height,16);
+ await page.locator('#account-toggle').click();assert.equal(await page.locator('.account-chevron').evaluate(e=>getComputedStyle(e).transform==='none'),false);await page.getByRole('button',{name:'Выйти',exact:true}).waitFor();await page.keyboard.press('Escape');assert.equal(await page.locator('#account-menu').isVisible(),false);
  await page.screenshot({path:`/tmp/prorab-header-${width}.png`,fullPage:true});
  }finally{await browser.close();}
 });
