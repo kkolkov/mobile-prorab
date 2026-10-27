@@ -7,7 +7,7 @@ type Props<T>={value:T;onChange:(next:T)=>void;disabled:boolean};
 const labels={floor:'Пол',walls:'Стены',ceiling:'Потолок',doors:'Межкомнатные двери',demolition:'Демонтаж отделки',wallPreparation:'Подготовка стен',floorPreparation:'Подготовка пола',electrical:'Электрика'};
 export function ApartmentForm({value:a,onChange,disabled}:Props<Apartment>) {
   return <>
-    <Grid>{(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Исходное состояние','Целевое состояние','Уровень ремонта'][i]} value={a[key]} options={choices[key]} disabledOptions={key==='targetState'?['fully_furnished']:[]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
+    <Grid>{(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Исходное состояние','Целевое состояние','Уровень ремонта'][i]} value={a[key]} options={choices[key]} hiddenOptions={key==='targetState'?['fully_furnished']:[]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
     <Field label="Площадь квартиры, м² — без балкона и лоджии" value={a.areaM2} onChange={v=>onChange({...a,areaM2:v})} numeric required disabled={disabled}/>
     <Field label="Высота потолков, м" value={a.ceilingHeight} onChange={v=>onChange({...a,ceilingHeight:v})} numeric scale={2} min={2} max={5} disabled={disabled} placeholder="Пусто — норматив калькулятора"/>
     <Heading>Общая отделка</Heading><Select label="Нужна перепланировка?" value={String(a.redevelopment??false)} options={{true:'Да',false:'Нет'}} onChange={v=>onChange({...a,redevelopment:v==='true'})} disabled={disabled}/><Body>Для комнат, кухни и коридора. Индивидуальная отделка имеет приоритет. Санузлы используют отдельные нормативы.</Body>

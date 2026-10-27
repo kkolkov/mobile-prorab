@@ -66,12 +66,12 @@ export function Field({label,value,onChange,numeric=false,required=false,scale=1
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} keyboardType={numeric?'decimal-pad':'default'} editable={!disabled} maxLength={maxLength} placeholder={placeholder} placeholderTextColor="#68766d" style={[styles.input,focused&&{borderColor:palette.accent,borderWidth:2},disabled&&styles.disabled,!!error&&{borderColor:'#b3261e'}]}/>
     {!!error&&<ErrorText message={error}/>}</View>;
 }
-export function Select({label,value,options,onChange,disabled,disabledOptions=[]}: {label:string;value:string|null;options:Record<string,string>;onChange:(value:string)=>void;disabled?:boolean;disabledOptions?:string[]}) {
+export function Select({label,value,options,onChange,disabled,disabledOptions=[],hiddenOptions=[]}: {label:string;value:string|null;options:Record<string,string>;onChange:(value:string)=>void;disabled?:boolean;disabledOptions?:string[];hiddenOptions?:string[]}) {
   const [open,setOpen]=useState(false);
   return <View style={styles.field}><Text style={styles.label}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={()=>setOpen(true)} style={[styles.input,disabled&&styles.disabled]}>
     <Text style={{fontSize:17,color:palette.ink}}>{options[value??'']??'Выберите'} ▾</Text></Pressable>
     <Modal visible={open} transparent animationType="slide" onRequestClose={()=>setOpen(false)}><View style={styles.overlay}><SafeAreaView style={styles.sheet}>
-      <Text accessibilityRole="header" style={styles.h2}>{label}</Text><ScrollView contentContainerStyle={{gap:8}}>{Object.entries(options).map(([key,text])=><Card key={key} title={text} disabled={disabled||disabledOptions.includes(key)} selected={key===value} onPress={()=>{onChange(key);setOpen(false);}}/>)}</ScrollView>
+      <Text accessibilityRole="header" style={styles.h2}>{label}</Text><ScrollView contentContainerStyle={{gap:8}}>{Object.entries(options).filter(([key])=>!hiddenOptions.includes(key)).map(([key,text])=><Card key={key} title={text} disabled={disabled||disabledOptions.includes(key)} selected={key===value} onPress={()=>{onChange(key);setOpen(false);}}/>)}</ScrollView>
       <Button secondary label="Закрыть" onPress={()=>setOpen(false)}/>
     </SafeAreaView></View></Modal></View>;
 }

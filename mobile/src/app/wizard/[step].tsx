@@ -68,7 +68,7 @@ export default function Wizard() {
     </>}
     {[2,3,5].includes(step)&&<>
       <Body>{step===2?'Определите исходное состояние объекта.':step===3?'До какого состояния хотите довести объект?':'Уровень влияет на стоимость, но не определяет перечень работ сам по себе.'}</Body>
-      <Grid>{Object.entries(choices[selectedKey]).map(([key,label])=><Card key={key} title={label} description={descriptions[key]} selected={local[selectedKey]===key} disabled={busy||key==='fully_furnished'} onPress={()=>change(selectedKey,key)}/>)}</Grid>
+      <Grid>{Object.entries(choices[selectedKey]).filter(([key])=>key!=='fully_furnished').map(([key,label])=><Card key={key} title={label} description={descriptions[key]} selected={local[selectedKey]===key} disabled={busy||key==='fully_furnished'} onPress={()=>change(selectedKey,key)}/>)}</Grid>
       {step===5&&<Body>Уровень ремонта можно изменить позже.</Body>}
     </>}
     {step===4&&<>

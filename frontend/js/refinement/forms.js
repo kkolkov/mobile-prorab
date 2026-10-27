@@ -20,7 +20,7 @@ export const choices = {
  insulation:{unknown:'Пока не знаю',yes:'Нужно',no:'Не нужно'}
 };
 export function select(key,label,value,options=choices[key.split('.').at(-1)]) {
- return `<div class="field"><label for="f-${key}">${esc(label)}</label><select id="f-${key}" data-field="${key}">${Object.entries(options).map(([v,text])=>`<option value="${esc(v)}" ${v===String(value)?'selected':''} ${key==='targetState'&&v==='fully_furnished'?'disabled':''}>${esc(text)}</option>`).join('')}</select></div>`;
+ return `<div class="field"><label for="f-${key}">${esc(label)}</label><select id="f-${key}" data-field="${key}">${Object.entries(options).map(([v,text])=>`<option value="${esc(v)}" ${v===String(value)?'selected':''} ${key==='targetState'&&v==='fully_furnished'?'disabled hidden':''}>${esc(text)}</option>`).join('')}</select></div>`;
 }
 export function input(key,label,value,{required=false,scale=1,min=0,max=null,text=false}={}){
  return `<div class="field"><label for="f-${key}">${esc(label)}</label><input id="f-${key}" data-field="${key}" value="${esc(value)}" ${text?'maxlength="100"':`inputmode="decimal" data-number="${scale}" data-min="${min}" ${max===null?'':`data-max="${max}"`}`} ${required?'required':''}></div>`;

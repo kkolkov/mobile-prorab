@@ -14,7 +14,7 @@ for(const mobile of [false,true])test(`Additional work ${mobile?'Expo':'Web'}: z
   async function select(label,value,text){if(mobile){await button(label).click();await button(text).click();}else await page.getByLabel(label,{exact:true}).selectOption(value);}
   await page.goto(mobile?'http://localhost:8081/':'http://127.0.0.1:5500/#project='+p.projectId);
   if(mobile)await page.getByRole('button',{name:/^Ремонт квартиры 60 м²/}).click();
-  assert.ok(await page.getByRole('button',{name:/Полностью обустроенная/}).isDisabled());
+  assert.equal(await page.getByRole('button',{name:/Полностью обустроенная/}).count(),0);
   await page.getByRole('button',{name:/^Чистовая отделка/}).click();await button('Продолжить').click();
   if(mobile){await button('Уменьшить: Количество комнат').click();await button('Уменьшить: Количество санузлов').click();}
   else{await page.locator('[data-minus=k]').click();await page.locator('[data-minus=b]').click();}
@@ -25,8 +25,8 @@ for(const mobile of [false,true])test(`Additional work ${mobile?'Expo':'Web'}: z
   await button('Уточнить расчёт').click();await page.getByRole('heading',{name:'Уточнение параметров проекта',exact:true}).waitFor();
   const apartmentCard=()=>page.getByRole('button',{name:/^Параметры квартиры/});
   await apartmentCard().click();
-  if(mobile){await button('Целевое состояние').click();assert.ok(await button('Полностью обустроенная').isDisabled());await button('Закрыть').click();}
-  else assert.ok(await page.locator('option[value=fully_furnished]').isDisabled());
+  if(mobile){await button('Целевое состояние').click();assert.equal(await button('Полностью обустроенная').count(),0);await button('Закрыть').click();}
+  else assert.equal(await page.locator('option[value=fully_furnished]').getAttribute('hidden'),'');
   await select('Нужна перепланировка?','true','Да');await saveSection('apartment');assert.match(await apartmentCard().innerText(),/Данные указаны/);
   await apartmentCard().click();await select('Нужна перепланировка?','false','Нет');await button('Назад').click();assert.ok((await api(path)).redevelopment);assert.ok(!(await apartmentCard().innerText()).includes('Данные указаны и обновлены'));
   await apartmentCard().click();await saveSection('apartment');assert.match(await apartmentCard().innerText(),/Данные указаны и обновлены/);assert.equal((await api(path)).redevelopment,false);
