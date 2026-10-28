@@ -40,6 +40,13 @@ public class AuthService {
   if(!s.expiresAt.isAfter(Instant.now()))throw unauthorized();return s;
  }
  @Transactional(readOnly=true) public AuthResponse me(UUID user){Account a=accounts.findById(user).orElseThrow(AuthService::unauthorized);return new AuthResponse(a.userId,a.login,null,null);}
+ @Transactional public void changePassword(UUID userId,String sessionHash,PasswordChange input){
+  var current=sessions.findById(sessionHash).orElseThrow(AuthService::unauthorized);
+  if(!userId.equals(current.userId)||!current.expiresAt.isAfter(Instant.now()))throw unauthorized();
+  var account=accounts.findById(userId).orElseThrow(AuthService::unauthorized);
+  account.passwordHash=passwords.hash(input.newPassword());accounts.saveAndFlush(account);
+  sessions.deleteByUserIdAndTokenHashNot(userId,sessionHash);
+ }
  @Transactional public void logout(String hash){sessions.deleteById(hash);}
  private static ResponseStatusException unauthorized(){return new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Войдите в аккаунт");}
  private static String digest(String token){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));}catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}}

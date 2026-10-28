@@ -82,3 +82,16 @@ EAS завершил сборку успешно. Целостность APK и 
 `mobile-prorab-1.0.0.apk` остаётся предыдущей сборкой без этого изменения.
 Клиент отправляет privacyAccepted; серверная проверка и веб-экран пока
 изменены только локально, на Render не опубликованы.
+
+
+## APK №7 — 28 октября 2026
+
+Сборка da2d19a1-56e7-40a7-925f-5471c05a573e, commit 89030e4.
+https://expo.dev/artifacts/eas/ZvNwmZVrBemr78f-huWivySWdCGCbgCWk4IheOuHw6Q.apk
+Локально mobile/build/android/mobile-prorab-1.0.0-build7.apk.
+ZIP без повреждений; apksigner verify прошёл; SHA-256 сертификата
+fa10c67409b39ebc8fad392db5ab41b5452022fe17f3161b1d3aa5536f5ab5c9,
+совпадает с APK №5. Package ru.prorab.mobile, versionCode 7, minSdk24,
+INTERNET и публичный HTTPS API подтверждены. Физическая установка не проверена.
+Содержит опубликованный релиз цен/сроков catalog-pricing-5; новая политика и
+локальная catalog-pricing-6 разрабатывались после отправки сборки и в неё не входят.

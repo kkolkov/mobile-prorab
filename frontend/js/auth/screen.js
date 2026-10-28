@@ -1,3 +1,4 @@
+import {privacyPolicy} from './privacy-policy.js';
 import {api} from '../api.js';
 import {saveSession} from './storage.js';
 export function showAuth(root,onSuccess){
@@ -20,7 +21,7 @@ export function showAuth(root,onSuccess){
   };
  }
  function showPolicy(){
-  root.innerHTML='<div class="shell auth-shell"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><h1>Политика обработки персональных данных</h1><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p><p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p><button class="secondary" id="privacy-back">Назад</button></div>';
+  root.innerHTML=`<div class="shell auth-shell"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><h1>Политика обработки персональных данных</h1>${privacyPolicy.map(section=>`<section><h2>${esc(section.title)}</h2><p>${esc(section.text)}</p></section>`).join('')}<button class="secondary" id="privacy-back">Назад</button></div>`;
   root.querySelector('#privacy-back').onclick=render;
  }
  function valid(){return (!register||consent)&&/^[a-zA-Z0-9._-]{3,40}$/.test(login.trim())&&password.length>=8&&password.length<=128;}

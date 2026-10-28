@@ -12,6 +12,7 @@ export const request = createRequest(API_BASE, fetch, 120000, authHeaders, expir
 export const api = {
   login: (login:string,password:string,register=false,privacyAccepted=false) => request<AuthSession>(`/auth/${register?'register':'login'}`,{login,password,...(register?{privacyAccepted}:{})}),
   me: () => request<{userId:string;login:string}>('/auth/me'),
+  changePassword: (newPassword:string) => request('/auth/password',{newPassword},'PUT'),
   logout: () => request('/auth/logout',{}),
   remove: (p:Project) => request(`/projects/${p.projectId}/delete?version=${p.version}`,{}),
   rename: (p:Project,name:string) => request<Project>(`/projects/${p.projectId}/name`,{name,version:p.version},'PUT'),

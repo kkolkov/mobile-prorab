@@ -16,7 +16,7 @@ import java.util.*;
 /** Unit pricing MVP. Prices and composition shares are provisional; geometry assumptions are explicit. */
 @Component
 public class UnitPriceCalculator implements RefinementCalculator {
-    public static final String VERSION="catalog-pricing-5";
+    public static final String VERSION="catalog-pricing-7";
     private final PriceCatalog catalog;
     private final ru.prorab.execution.service.TimePlanner timePlanner;
     public UnitPriceCalculator(PriceCatalog catalog,ru.prorab.execution.service.TimePlanner timePlanner){this.catalog=catalog;this.timePlanner=timePlanner;}
@@ -30,7 +30,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         notes.add("Для городских материалов без цен по классам сохранён оценочный множитель: Бюджет ×1, Комфорт ×1,3, Бизнес/Премиум ×1,7. Работы идут без множителя. Комплекты дверей, кухни и техника уже выбраны по классу: повторного множителя нет.");
         notes.add("Нет обмеров периметра и проёмов: помещение условно квадратное; стены = 4 × √площадь × высота × 0,85. Проёмы — 15%. Высота без ввода — 2,7 м. Частичные работы — 50% объёма.");
         notes.add("Неизвестная отделка: ламинат, обои, натяжной потолок; санузлы: плитка на полу и стенах. Демонтаж без данных о прежнем покрытии: обои, ламинат, натяжной потолок. Новое покрытие не определяет старое.");
-        notes.add("Электрика, сантехнические трассы, остекление и утепление сохраняют укрупнённые ставки и допущения прежней модели; они отмечены в строках. Импорт справочника не подтверждает эти нормы.");
+        notes.add("Электрика и сантехника: материалы и монтаж по сводному справочнику. Число розеток сохранено: округление площади / 4 вверх; частичные работы — половина объёма. Кабель розеток условно 2 м на м², штробы — 40% кабеля (правила сводного файла). Щит, выделенные линии приборов и замена вводного узла воды отдельно не включены без выбора этих работ.");
         notes.add("Диапазон −10%/+15%, резерв 10% сверх максимума — допущения модели. Сроки и технологические паузы остаются предварительными. Доставка, вывоз мусора и перепланировка отдельно не оценены.");
         BigDecimal height=a.ceilingHeight()==null?n("2.7"):a.ceilingHeight();
         Map<UUID,Room> rooms=new HashMap<>();d.rooms().forEach(r->rooms.put(r.id(),r));
@@ -55,10 +55,9 @@ public class UnitPriceCalculator implements RefinementCalculator {
             bill.reference("repair",label+": демонтаж пола","L_demo_floor",area.areaM2().multiply(demo));
             bill.reference("repair",label+": демонтаж потолка","L_demo_c_stretch",area.areaM2().multiply(demo));
             BigDecimal electric=switch(a.currentState()){case WHITE_BOX,LIVED_IN->BigDecimal.ZERO;default->BigDecimal.ONE;};
-            bill.add("repair",label+": электрика","electrical",area.areaM2().divide(n("4"),0,RoundingMode.CEILING).multiply(work(a.electrical(),electric,"keep")),BigDecimal.ONE);
-            int points=switch(area.type()){case "combined_bathroom"->3;case "bathroom"->2;case "toilet","kitchen"->1;default->0;};
-            // Finish-only includes connection points; other targets include basic fixtures.
-            bill.add("repair",label+": сантехника","plumbing",BigDecimal.valueOf(points),a.targetState()==TargetState.FINISH_ONLY?n("0.35"):BigDecimal.ONE);
+            BigDecimal electricalShare=work(a.electrical(),electric,"keep");
+            bill.electrical("repair",label,area.areaM2().divide(n("4"),0,RoundingMode.CEILING).multiply(electricalShare),area.areaM2().multiply(n("2")).multiply(electricalShare),wet,false);
+            bill.plumbing(label,area.type(),a.areaM2(),a.targetState()!=TargetState.FINISH_ONLY,bundledKitchen(d.kitchens().get(area.id()),a.targetState()!=TargetState.FINISH_ONLY));
             if(wet||area.type().equals("living")){
                 String door=a.doors().equals("concealed")?"hidden":"ordinary";
                 bill.reference("repair",label+": дверной комплект","D_"+door+"_"+bill.grade,BigDecimal.ONE);
@@ -71,15 +70,19 @@ public class UnitPriceCalculator implements RefinementCalculator {
             if(k.cabinets().equals("new")||k.cabinets().equals("unknown")&&equipped){
                 BigDecimal length=k.lengthM()==null?n("3"):k.lengthM();
                 boolean custom=!Set.of("unknown","film").contains(k.facade())||!Set.of("unknown","laminated").contains(k.countertop());
-                if(custom){
+                if(bundledKitchen(k,equipped)){
+                    bill.direct("kitchen",label+": гарнитур с мойкой, смесителем и постформингом","spb.kitchen."+k.facade(),length,BigDecimal.ONE);
+                    bill.direct("kitchen",label+": сборка гарнитура — от, другой подрядчик","spb.kitchen.assembly",length,BigDecimal.ONE);
+                    notes.add(label+": комплект СПб с фасадами "+(k.facade().equals("plastic")?"пластик":"эмаль")+" включает мойку, смеситель и обычную столешницу. Мойка со смесителем повторно не начислена; их подключение и сифон отдельно. Сборка — стартовая ставка другого подрядчика. Цена типового комплекта пересчитана линейно по длине, класс повторно не умножается.");
+                }else if(custom){
                     bill.add("kitchen",label+": гарнитур с выбранными фасадами/столешницей (укрупнённая оценка)","joinery",length.divide(n("3"),8,RoundingMode.HALF_UP),material(k.facade()).multiply(material(k.countertop())));
-                    notes.add(label+": для выбранных фасадов/столешницы нет сопоставимого комплекта в файле; сохранена прежняя оценка с монтажом, цена комплекта повторно не добавлена.");
+                    notes.add(label+": для каменной столешницы есть отдельный прайс, но цена обычной столешницы внутри гарнитура не выделена. Поэтому сохранена прежняя укрупнённая оценка гарнитура с монтажом; комплект с постформингом и камень сверху не начисляются.");
                 }else{
                     // Imported cabinets are sold in 0.01 of a 3 m kit, not at the full kit price.
                     bill.reference("kitchen",label+": гарнитур","K_cabinets_"+bill.grade,length.divide(n("3"),8,RoundingMode.HALF_UP).divide(n("0.01"),0,RoundingMode.CEILING));
                     bill.reference("kitchen",label+": сборка гарнитура","L_kitchen_assembly",length);
                 }
-                if(k.lengthM()==null)notes.add(label+": длина гарнитура условно 3 м. Состав — шкафы и столешница; сборка отдельной строкой.");
+                if(k.lengthM()==null)notes.add(label+": длина гарнитура условно 3 м, не обмер.");
             }
             String stove=k.stove()==null?(equipped?"hob":"none"):k.stove();
             if(stove.equals("cooker"))bill.add("kitchen",label+": плита с духовкой (оценочная ставка)","equipment",BigDecimal.ONE,n("1.5"));
@@ -89,8 +92,10 @@ public class UnitPriceCalculator implements RefinementCalculator {
             if(selected(k.hood(),equipped))bill.appliance(label,"вытяжка",4);
             if(selected(k.dishwasher(),equipped))bill.appliance(label,"посудомоечная машина",5);
         }
+        notes.add("Сантехника: совмещённый санузел — раковина, ванна и унитаз; ванная — раковина и ванна; туалет — унитаз; кухня — мойка. При цели «Только отделка» учитываются только трубы и выводы, без приборов и их монтажа; прежний множитель 0,35 не используется. Длины трасс оценены по правилам сводного файла с масштабом √(площадь квартиры / 60), а не по обмерам. Дополнительная техника и её трассы не добавляются автоматически.");
+        notes.add("Остекление, утепление и кухни пластик/эмаль с обычной столешницей — прайсы СПб с источниками и датами; город в приложении не выбирается. Отдельная плита, кухня с каменной столешницей и основная мебель сохраняют прежние ставки. Стартовые цены «от» не являются фиксированным предложением на этот объект.");
         notes.add("Кухонная техника — отдельные цены по классу. Монтаж каждого прибора оценён как 1/6 ставки установки шести приборов: состав операций отличается, требуется проверка подрядчиком. Отдельно стоящая плита сохраняет прежнюю оценочную ставку и включает духовку.");
-        notes.add("Натяжной потолок: полотно отдельно; профиль и крепёж включены в комплекс монтажа. Комплексные услуги отнесены к работам без выдуманной разбивки поставщика. Пакетные материалы округляются после объединения потребности по проекту; упаковка оплачивается один раз, остаток используется следующими помещениями. Световые узлы потолка требуют уточнения и отдельно не добавлены.");
+        notes.add("Натяжной потолок: полотно отдельно; профиль и крепёж включены в комплекс монтажа. Комплексные услуги (в том числе остекление и утепление) отнесены к работам/услугам вместе с включёнными материалами: раздельная стоимость поставщиком не раскрыта. Пакетные материалы округляются после объединения потребности по проекту; упаковка оплачивается один раз, остаток используется следующими помещениями. Световые узлы потолка требуют уточнения и отдельно не добавлены.");
         notes.add("Двери — комплект по выбранному классу и монтаж отдельной строкой. Дополнительные доборы и отделка скрытого полотна не оценены без размеров. Основная мебель полностью обустроенной квартиры сохраняет прежний условный эквивалент.");
         if(a.targetState()==TargetState.FULLY_FURNISHED)bill.add("repair","Основная мебель","joinery",BigDecimal.valueOf(d.rooms().stream().filter(r->r.type().equals("living")).count()),n("0.5"));
         if(Set.of("balcony","both").contains(d.exteriors().presence()))exterior(bill,"balcony",d.exteriors().balcony(),"3.0",height,notes);
@@ -113,14 +118,22 @@ public class UnitPriceCalculator implements RefinementCalculator {
         bill.finish(section,label+": пол","floor",e.floor(),area);
         bill.finish(section,label+": стены","wall",e.walls(),walls(area,height));
         if(!e.ceiling().equals("none"))bill.finish(section,label+": потолок","ceiling",e.ceiling(),area);
-        if(!e.insulation().equals("no"))bill.add(section,label+": утепление","preparation",walls(area,height).add(area),n("2"));
-        if(e.glazing().equals("new")){
-            bill.add(section,label+": остекление","glazing",area.sqrt(MathContext.DECIMAL64).multiply(height),BigDecimal.ONE);
-            notes.add(label+": площадь остекления условно √площадь пола × высота; утепление ×2 подготовки поверхности.");
+        boolean insulated=!e.insulation().equals("no");
+        if(insulated){
+            bill.direct(section,label+": утепление стен и потолка ЭППС 50 мм — от","spb.insulation.wall50",walls(area,height).add(area),BigDecimal.ONE);
+            bill.direct(section,label+": утепление пола с ЦСП","spb.insulation.floor50",area,BigDecimal.ONE);
+            notes.add(label+": для расчёта утепления принят ЭППС 50 мм: стены и потолок отдельно от пола. Материал и работа уже включены; декоративная отделка считается отдельно. Толщина — допущение модели, не теплотехнический подбор; стены оценены по прежней формуле без обмеров.");
         }
-        if(selected(e.lighting(),true))bill.add(section,label+": освещение","electrical",BigDecimal.ONE,BigDecimal.ONE);
-        if(selected(e.sockets(),true))bill.add(section,label+": розетка","electrical",BigDecimal.ONE,BigDecimal.ONE);
+        if(e.glazing().equals("new")){
+            bill.direct(section,label+": "+(insulated?"тёплое":"холодное")+" остекление с монтажом","spb.glazing."+(insulated?"warm":"cold"),area.sqrt(MathContext.DECIMAL64).multiply(height),BigDecimal.ONE);
+            notes.add(label+": тип остекления не запрашивается; расчётное допущение — тёплое при утеплении (включая неизвестное), холодное при отказе от утепления. Площадь остекления условно √площадь пола × высота. Ставки взяты из разных типоразмеров и скидочных предложений, поэтому тёплый вариант может быть дешевле холодного; это не сравнение одинаковых заказов.");
+        }
+        if(selected(e.lighting(),true))bill.electrical(section,label+": освещение",BigDecimal.ONE,area,true,true);
+        if(selected(e.sockets(),true))bill.electrical(section,label+": розетка",BigDecimal.ONE,area.multiply(n("2")),true,false);
         notes.add(label+": неизвестное остекление сохраняется; неизвестные утепление, потолок, свет и розетка включаются по нормативу.");
+    }
+    private static boolean bundledKitchen(Kitchen k,boolean equipped){
+        return k!=null&&(k.cabinets().equals("new")||k.cabinets().equals("unknown")&&equipped)&&Set.of("plastic","enamel").contains(k.facade())&&Set.of("unknown","laminated").contains(k.countertop());
     }
     private static BigDecimal walls(BigDecimal area,BigDecimal height){return area.sqrt(MathContext.DECIMAL64).multiply(n("4")).multiply(height).multiply(n("0.85"));}
     private static String effective(String value,String general){return value.equals("inherit")?general:value;}
@@ -183,6 +196,71 @@ public class UnitPriceCalculator implements RefinementCalculator {
         void operation(String section,String name,String operation,BigDecimal quantity,boolean graded){
             direct(section,name+": работа","average.work."+operation,quantity,BigDecimal.ONE);
             direct(section,name+": материалы","average.material."+operation,quantity,graded?level:BigDecimal.ONE);
+        }
+        // Rates come from price_matrix; route quantities are explicit workbook estimates, not measurements.
+        void electrical(String section,String label,BigDecimal points,BigDecimal cable,boolean wet,boolean light){
+            if(points.signum()==0)return;
+            materialNeed(section,light?"E_cable_light":"E_cable_socket",cable);
+            materialNeed(section,"E_conduit",cable);
+            BigDecimal clips=cable.divide(n("0.5"),0,RoundingMode.CEILING);
+            materialNeed(section,"E_clip",clips);materialNeed(section,"E_clip_dowel",clips);
+            reference(section,label+": прокладка кабеля","L_cable",cable);
+            BigDecimal chase=cable.multiply(n("0.4"));
+            reference(section,label+": трассы в неуточнённых стенах","L_chase_other",chase);
+            reference(section,label+": заделка штроб","L_chase_fill",chase);
+            // Workbook section: 25 x 25 mm; density is supplied in the material norm (1600 kg/m3).
+            materialNeed(section,"E_chase_mix",chase.multiply(n("0.025")).multiply(n("0.025")));
+            if(light){
+                reference(section,label+": светильник","E_light_"+grade,points);
+                reference(section,label+": монтаж светильника","L_light",points);
+            }else{
+                materialNeed(section,"E_backbox_unknown",points);
+                materialNeed(section,"E_backbox_mix",points);
+                reference(section,label+": отверстия под подрозетники","L_box_other",points);
+                reference(section,label+": монтаж подрозетников","L_backbox",points);
+                reference(section,label+": розетки","E_socket_"+(wet?"wet_":"dry_")+grade,points);
+                reference(section,label+": монтаж розеток",wet?"L_socket_wet":"L_socket_dry",points);
+            }
+        }
+        void plumbing(String label,String type,BigDecimal apartmentArea,boolean fixtures,boolean sinkIncluded){
+            int basin=Set.of("combined_bathroom","bathroom").contains(type)?1:0;
+            int bath=basin,wc=Set.of("combined_bathroom","toilet").contains(type)?1:0,kitchen=type.equals("kitchen")?1:0;
+            if(basin+bath+wc+kitchen==0)return;
+            BigDecimal scale=apartmentArea.divide(n("60"),12,RoundingMode.HALF_UP).sqrt(MathContext.DECIMAL64);
+            // Kitchen retains one sink; no automatic dishwasher/washer connection from the sample workbook.
+            BigDecimal cold=n(""+(3*basin+3*bath+2*wc+3*kitchen)).multiply(scale);
+            BigDecimal hot=n(""+(3*basin+3*bath+3*kitchen)).multiply(scale);
+            BigDecimal sewer50=n(""+(2*(basin+bath+kitchen))).multiply(scale),sewer110=n(""+(2*wc)).multiply(scale);
+            BigDecimal waterPoints=n(""+(2*basin+2*bath+wc+2*kitchen)),sewerPoints=n(""+(basin+bath+wc+kitchen));
+            materialNeed("repair","P_pipe_c",cold);materialNeed("repair","P_pipe_h",hot);
+            materialNeed("repair","P_insulation",cold.add(hot));materialNeed("repair","P_water_clip",cold.add(hot));
+            for(String id:List.of("P_water_elbow","P_water_tee","P_water_coupling","P_water_outlet","P_seal_thread"))materialNeed("repair",id,waterPoints);
+            reference("repair",label+": монтаж труб воды","L_pipe_water",cold.add(hot));
+            reference("repair",label+": выводы воды","L_water_points",waterPoints);
+            materialNeed("repair","P_sewer50",sewer50);materialNeed("repair","P_sewer110",sewer110);
+            materialNeed("repair","P_sewer_clip",sewer50.add(sewer110));
+            for(String id:List.of("P_sewer_bend","P_sewer_tee","P_sewer_cuff"))materialNeed("repair",id,sewerPoints);
+            reference("repair",label+": монтаж канализации","L_sewer",sewer50.add(sewer110));
+            reference("repair",label+": выводы канализации","L_sewer_points",sewerPoints);
+            if(!fixtures)return;
+            if(basin>0){
+                reference("repair",label+": раковина","A_basin_"+grade,BigDecimal.ONE);
+                reference("repair",label+": смеситель раковины","A_basin_mixer_"+grade,BigDecimal.ONE);
+                reference("repair",label+": сифон","A_basin_siphon",BigDecimal.ONE);
+                reference("repair",label+": подводки смесителя","A_basin_hose",n("2"));
+                for(String id:List.of("L_basin_single","L_basin_mixer","L_siphon"))reference("repair",label+": "+metadata.get("ref."+id).get("title").asText(),id,BigDecimal.ONE);
+            }
+            if(bath>0){
+                for(String id:List.of("A_bath_"+grade,"A_bath_drain","A_bath_mixer","L_bath","L_bath_mixer"))reference("repair",label+": "+metadata.get("ref."+id).get("title").asText(),id,BigDecimal.ONE);
+            }
+            if(wc>0){
+                for(String id:List.of("A_wc_floor_"+grade,"A_wc_conn","L_wc"))reference("repair",label+": "+metadata.get("ref."+id).get("title").asText(),id,BigDecimal.ONE);
+            }
+            if(kitchen>0){
+                if(!sinkIncluded)reference("repair",label+": мойка и смеситель","K_sink_"+grade,BigDecimal.ONE);
+                reference("repair",label+": сифон мойки","A_basin_siphon",BigDecimal.ONE);
+                reference("repair",label+": установка мойки","L_kitchen_sink",BigDecimal.ONE);
+            }
         }
         void appliance(String label,String title,int role){
             reference("kitchen",label+": "+title,"K_tech"+role+"_"+grade,BigDecimal.ONE);

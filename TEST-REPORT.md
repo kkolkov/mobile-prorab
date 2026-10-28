@@ -213,3 +213,29 @@ Render и APK этой итерацией не обновлялись. Тест�
 - Live local API smoke: registration, draft, 5-step estimate, recalculation/apply, financial baseline, start schedule, cleanup of test project. 64 m² fixture: 1,464,200 RUB calculated cost; this is a software fixture, not comparison with a contractor's final bill.
 - Mobile: 15 tests, TypeScript and lint passed. No physical Android installation yet.
 - Deployment and APK completion must be verified separately after publication.
+
+
+## 2026-10-28 — инженерные позиции и политика
+
+- Backend: 91 тестов, 0 failures; catalog-pricing-6, частичные работы, явный keep,
+  finish_only без приборов, изменение/удаление ставок, упаковки, распределение
+  монтажа коммуникаций и приборов по этапам phases-3.
+- Frontend: 20 unit, включая совпадение политики WEB/Expo.
+- Browser privacy: 4 сценария Chromium/WebKit × WEB/Expo, возврат и сохранение
+  ввода, согласие не включается автоматически, повтор после ошибки регистрации.
+- Mobile: typecheck и lint прошли. Физические устройства в этой итерации не проверялись.
+- git diff --check прошёл. Текущие изменения не опубликованы.
+- APK №7 предыдущего релиза скачана: ZIP/API/package/minSdk и подпись проверены;
+  она не содержит новые текст политики и catalog-pricing-6.
+
+
+## 2026-10-28 — прайсы СПб, смена пароля, подготовка релиза №8
+
+- 97 backend-тестов прошли, включая новые цены, двойной счёт комплектов,
+  сроки, смену пароля и отзыв сеансов; V15/V16 проверены на H2 и локальной PostgreSQL.
+- 20 frontend-unit, 15 mobile-unit, typecheck и lint прошли.
+- 8 браузерных сценариев Chromium/WebKit × WEB/Expo: пароль и политика.
+- Локальный полный API-smoke: catalog-pricing-7, 496 строк, phases-4,
+  создание/пересчёт/применение/финансы/график/удаление тестового проекта — пройден.
+- Контрольная сумма фикстуры 64 м²: 1 607 560 ₽, не проверка точности рыночной сметы.
+- Публикация и физическая установка Android проверяются отдельно.

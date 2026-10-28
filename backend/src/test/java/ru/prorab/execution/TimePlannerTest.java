@@ -55,4 +55,17 @@ class TimePlannerTest {
   var expensive=new CostDetails.Line("repair","wallpaper","average.work.wallpaper","м²",new BigDecimal("100"),new BigDecimal("99999"),new BigDecimal("1.7"),new BigDecimal("16999830"),"test",LocalDate.of(2026,10,28));
   assertEquals(updated,planner.calculate(input(),costs(expensive)));
  }
+ @Test void catalogEngineeringHasRoughAndAssemblyPhasesWithoutInventedWorkloads(){
+  when(catalog.list()).thenReturn(List.of());
+  var plan=planner.calculate(input(),costs(line("ref.L_cable","128"),line("ref.L_pipe_water","20"),line("ref.L_wc","1"),line("ref.L_socket_dry","16"),line("ref.E_cable_socket","2")));
+  assertEquals(List.of("rough","assembly"),plan.phases().stream().map(p->p.id()).toList());
+  assertEquals(18,plan.phases().getFirst().durationDays());assertEquals(4,plan.phases().getLast().durationDays());
+  assertTrue(plan.workloads().isEmpty());assertTrue(plan.version().startsWith("phases-4-"));
+ }
+ @Test void spbInstalledServicesAffectScheduleButCabinetMaterialDoesNot(){
+  when(catalog.list()).thenReturn(List.of());
+  var plan=planner.calculate(input(),costs(line("spb.glazing.warm","5"),line("spb.insulation.wall50","20"),line("spb.kitchen.plastic","3"),line("spb.kitchen.assembly","3")));
+  assertEquals(List.of("rough","assembly"),plan.phases().stream().map(p->p.id()).toList());
+  assertTrue(plan.assumptions().stream().noneMatch(n->n.contains("spb.kitchen.plastic")));
+ }
 }

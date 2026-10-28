@@ -1,3 +1,4 @@
+import {showPasswordChange} from './auth/password.js';
 import {api} from './api.js';
 import {session,clearSession} from './auth/storage.js';
 import {showAuth} from './auth/screen.js';
@@ -12,6 +13,7 @@ async function open(){
  try{
   const me=await api.me();bar.hidden=false;bar.querySelector('#account-login').textContent=me.login;
 
+  bar.querySelector('#change-password').onclick=()=>{closeAccount();showPasswordChange();};
   bar.querySelector('#logout').onclick=async()=>{try{await api.logout();}catch(e){if(e.status!==401){bar.querySelector('#account-error').textContent=e.message;return;}}clearSession();location.hash='';location.reload();};
   const {start}=await import('./app.js');await start();
  }catch(e){

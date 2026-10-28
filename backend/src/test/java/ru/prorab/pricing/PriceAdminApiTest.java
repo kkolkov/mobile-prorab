@@ -43,7 +43,7 @@ class PriceAdminApiTest {
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());
  }
  @Test void publicAdminDoesNotOpenProjectOrAccountEndpoints()throws Exception{
-  assertEquals(486,list().get("rows").size());assertEquals(0,list().get("missing").size());
+  assertEquals(496,list().get("rows").size());assertEquals(0,list().get("missing").size());
   mvc.perform(get("/porabadmin")).andExpect(status().isOk()).andExpect(forwardedUrl("/porabadmin/index.html"));
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
  }
@@ -69,8 +69,8 @@ class PriceAdminApiTest {
  @Test void deleteRequiresCurrentVersionAndRestoreDoesNotInsertFakePrice()throws Exception{
   var row=floor();mvc.perform(post(path+"/floor/delete?version=999")).andExpect(status().isConflict());
   mvc.perform(post(path+"/floor/delete?version="+row.get("version").asLong())).andExpect(status().isOk());
-  assertEquals(485,list().get("rows").size());assertEquals("floor",list().at("/missing/0/code").asText());assertThrows(IllegalStateException.class,()->catalog.snapshot().rate("floor"));
-  save(row,404);row.putNull("version");save(row,200);assertEquals(486,list().get("rows").size());assertNotNull(catalog.snapshot());
+  assertEquals(495,list().get("rows").size());assertEquals("floor",list().at("/missing/0/code").asText());assertThrows(IllegalStateException.class,()->catalog.snapshot().rate("floor"));
+  save(row,404);row.putNull("version");save(row,200);assertEquals(496,list().get("rows").size());assertNotNull(catalog.snapshot());
   save(row,409);
  }
 }

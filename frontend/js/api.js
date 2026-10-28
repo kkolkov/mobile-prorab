@@ -18,6 +18,7 @@ export const api = {
   list: () => request('/projects'),
   me: () => request('/auth/me'),
   login: (body,register=false) => request(`/auth/${register?'register':'login'}`, {method:'POST',body:JSON.stringify(body)}),
+  changePassword: newPassword => request('/auth/password',{method:'PUT',body:JSON.stringify({newPassword})}),
   logout: () => request('/auth/logout',{method:'POST'}),
   access: () => request('/projects/access', {}),
   accessAction: (action, body={}) => request(`/projects/access/${action}`, {method:'POST',body:JSON.stringify(body)}),

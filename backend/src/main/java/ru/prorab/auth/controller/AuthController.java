@@ -11,5 +11,6 @@ public class AuthController {
  @PostMapping("/register") public AuthResponse register(@Valid @RequestBody Credentials r){return service.register(r);}
  @PostMapping("/login") public AuthResponse login(@Valid @RequestBody Credentials r){return service.login(r);}
  @GetMapping("/me") public AuthResponse me(@RequestAttribute UUID userId){return service.me(userId);}
+ @PutMapping("/password") public Map<String,Boolean> changePassword(@RequestAttribute UUID userId,@RequestAttribute String sessionHash,@Valid @RequestBody PasswordChange input){service.changePassword(userId,sessionHash,input);return Map.of("ok",true);}
  @PostMapping("/logout") public Map<String,Boolean> logout(@RequestAttribute String sessionHash){service.logout(sessionHash);return Map.of("ok",true);}
 }

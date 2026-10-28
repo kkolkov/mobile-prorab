@@ -14,7 +14,7 @@ for(const [name,engine] of Object.entries({webkit,chromium}))test(`${name}: regi
   await page.screenshot({path:`/tmp/prorab-auth-${name}.png`,fullPage:true});
   assert.equal(await page.getByRole('button',{name:'Создать аккаунт',exact:true}).isDisabled(),true);
   await page.getByRole('link',{name:'Политика обработки персональных данных',exact:true}).click();
-  await page.getByText('Lorem ipsum dolor sit amet, consectetur adipiscing elit.',{exact:false}).waitFor();
+  await page.getByText('Оператор персональных данных — ООО «Мобильный прораб».',{exact:false}).waitFor();
   await page.getByRole('button',{name:'Назад',exact:true}).click();
   assert.equal(await page.getByLabel('Логин',{exact:true}).inputValue(),login);
   assert.equal(await page.getByRole('button',{name:'Создать аккаунт',exact:true}).isDisabled(),true);

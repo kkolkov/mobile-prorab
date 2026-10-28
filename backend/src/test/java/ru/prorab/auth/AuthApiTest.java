@@ -85,4 +85,25 @@ class AuthApiTest {
   mvc.perform(get("/api/projects/access").header("Authorization",token)).andExpect(status().isOk());
   mvc.perform(get("/api/projects/access").header("Authorization",bearer(b)).header("X-Prorab-User",a.get("userId").asText())).andExpect(status().isNotFound());
  }
+
+ @Test void passwordChangeNeedsSessionAndRejectsInvalidPassword()throws Exception{
+  mvc.perform(put("/api/auth/password").contentType("application/json").content("{\"newPassword\":\"Changed-pass-123\"}")).andExpect(status().isUnauthorized());
+  var a=register();
+  for(String password:List.of("","short","        ","a".repeat(129)))mvc.perform(put("/api/auth/password").header("Authorization",bearer(a)).contentType("application/json").content(json.writeValueAsString(Map.of("newPassword",password)))).andExpect(status().isBadRequest());
+  mvc.perform(put("/api/auth/password").header("Authorization",bearer(a)).contentType("application/json").content("{}")).andExpect(status().isBadRequest());
+  mvc.perform(post("/api/auth/login").contentType("application/json").content(credentials(a.get("login").asText(),"Test-pass-123"))).andExpect(status().isOk());
+ }
+ @Test void passwordChangeUsesCurrentAccountAndRevokesOtherSessionsOnly()throws Exception{
+  var a=register();var other=register();
+  var second=json.readTree(mvc.perform(post("/api/auth/login").contentType("application/json").content(credentials(a.get("login").asText(),"Test-pass-123"))).andReturn().getResponse().getContentAsString());
+  String password="Changed-pass-456";
+  mvc.perform(put("/api/auth/password").header("Authorization",bearer(a)).contentType("application/json").content(json.writeValueAsString(Map.of("newPassword",password,"userId",other.get("userId").asText())))).andExpect(status().isOk()).andExpect(jsonPath("$.ok").value(true));
+  mvc.perform(get("/api/auth/me").header("Authorization",bearer(a))).andExpect(status().isOk());
+  mvc.perform(get("/api/auth/me").header("Authorization",bearer(second))).andExpect(status().isUnauthorized());
+  mvc.perform(put("/api/auth/password").header("Authorization",bearer(second)).contentType("application/json").content(json.writeValueAsString(Map.of("newPassword","Another-pass-789")))).andExpect(status().isUnauthorized());
+  mvc.perform(post("/api/auth/login").contentType("application/json").content(credentials(a.get("login").asText(),"Test-pass-123"))).andExpect(status().isUnauthorized());
+  mvc.perform(post("/api/auth/login").contentType("application/json").content(credentials(a.get("login").asText(),password))).andExpect(status().isOk());
+  mvc.perform(post("/api/auth/login").contentType("application/json").content(credentials(other.get("login").asText(),"Test-pass-123"))).andExpect(status().isOk());
+  String hash=db.queryForObject("select password_hash from accounts where user_id=?",String.class,UUID.fromString(a.get("userId").asText()));assertNotEquals(password,hash);assertTrue(hash.startsWith("600000:"));
+ }
 }

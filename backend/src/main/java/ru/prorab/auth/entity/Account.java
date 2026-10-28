@@ -5,6 +5,7 @@ import java.util.UUID;
 @Entity @Table(name="accounts")
 public class Account {
  @Id public UUID userId;
+ @Version public long version;
  @Column(length=40,nullable=false,unique=true) public String login;
  @Column(length=255,nullable=false) public String passwordHash;
  @Column(nullable=false) public Instant createdAt;

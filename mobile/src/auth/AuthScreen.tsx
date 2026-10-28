@@ -1,3 +1,4 @@
+import privacyPolicy from './privacy-policy.json';
 import { useRef, useState } from 'react';
 import { View,Text,TextInput,Modal,Pressable } from 'react-native';
 import { Screen,Body,Button,Check,ErrorText,styles } from '../components/ui';
@@ -12,7 +13,7 @@ export function AuthScreen(){
   <View style={styles.field}><Text style={styles.label}>Пароль</Text><TextInput accessibilityLabel="Пароль" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoCorrect={false} autoComplete={register?'new-password':'current-password'} textContentType={register?'newPassword':'password'} maxLength={128} editable={!busy} placeholder="Не менее 8 символов" style={styles.input} onSubmitEditing={submit}/><Text style={styles.text}>От 8 до 128 символов.</Text></View>
   {register&&<Body>Логин: 3–40 символов — латиница, цифры, точка, дефис или подчёркивание.</Body>}
   {register&&<><Check label="Я согласен на обработку персональных данных" value={consent} fallback={false} onChange={setConsent} disabled={busy}/><Pressable accessibilityRole="link" disabled={busy} onPress={()=>setPolicy(true)}><Text style={[styles.text,{textDecorationLine:'underline',color:'#171717'}]}>Политика обработки персональных данных</Text></Pressable></>}
-  <Modal visible={policy} animationType="slide" onRequestClose={()=>setPolicy(false)}><Screen title="Политика обработки персональных данных" back={()=>setPolicy(false)}><Body>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</Body><Body>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</Body></Screen></Modal>
+  <Modal visible={policy} animationType="slide" onRequestClose={()=>setPolicy(false)}><Screen title="Политика обработки персональных данных" back={()=>setPolicy(false)}>{privacyPolicy.map(section=><View key={section.title} style={styles.field}><Text style={styles.label}>{section.title}</Text><Body>{section.text}</Body></View>)}</Screen></Modal>
   {busy&&<Body>Подключаемся к серверу. После перерыва первый вход может занять до двух минут.</Body>}
   <ErrorText message={error}/><Button label={register?'Создать аккаунт':'Войти'} busy={busy} disabled={!valid} onPress={submit}/>
   <Button secondary label={register?'Уже есть аккаунт? Войти':'Нет аккаунта? Зарегистрироваться'} disabled={busy} onPress={()=>{setRegister(!register);setConsent(false);setError('');}}/>

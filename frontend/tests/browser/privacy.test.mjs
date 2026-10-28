@@ -12,7 +12,7 @@ for(const [engineName,engine] of Object.entries({chromium,webkit}))for(const [cl
    assert.equal(await submit.isDisabled(),true);
    await page.getByLabel('Пароль',{exact:true}).press('Enter');assert.equal(requests.length,0);
    await page.getByRole('link',{name:'Политика обработки персональных данных',exact:true}).click();
-   await page.getByText('Lorem ipsum dolor sit amet, consectetur adipiscing elit.',{exact:false}).waitFor();
+   await page.getByText('Оператор персональных данных — ООО «Мобильный прораб».',{exact:false}).waitFor();
    await page.getByRole('button',{name:'Назад',exact:true}).click();
    assert.equal(await page.getByLabel('Логин',{exact:true}).inputValue(),'privacy_test');
    assert.equal(await page.getByLabel('Пароль',{exact:true}).inputValue(),'Test-pass-123');

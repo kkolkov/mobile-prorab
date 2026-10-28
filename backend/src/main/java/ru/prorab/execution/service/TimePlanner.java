@@ -16,6 +16,8 @@ public final class TimePlanner {
  private final TimeNormCatalog catalog;
  public TimePlanner(TimeNormCatalog catalog){this.catalog=catalog;}
  private static final Set<String> ROUGH=Set.of("plaster_wall","plaster_ceiling","plaster_slope","screed","screed_semi","waterproof");
+ private static final Set<String> ENGINEERING_ROUGH=Set.of("L_cable","L_chase_other","L_chase_fill","L_box_other","L_backbox","L_pipe_water","L_water_points","L_sewer","L_sewer_points");
+ private static final Set<String> ENGINEERING_ASSEMBLY=Set.of("L_socket_dry","L_socket_wet","L_light","L_basin_single","L_basin_mixer","L_siphon","L_bath","L_bath_mixer","L_wc");
  private static final Set<String> LEGACY=Set.of("floor","wall","ceiling","preparation","demolition","electrical","plumbing","joinery","equipment","glazing");
  public TimePlan calculate(RefinementData d,CostDetails costs){
   Map<String,TimeNormRow> norms=new TreeMap<>();for(var n:catalog.list())norms.put(n.code(),n);
@@ -30,9 +32,9 @@ public final class TimePlanner {
     if(!line.unit().equals("м²"))throw new IllegalStateException("Time norm unit mismatch: "+op);
     quantities.merge(op,line.quantity(),BigDecimal::add);
     if(Set.of("plaster_wall","plaster_ceiling","screed","screed_semi").contains(op))preparation=true;
-   }else if(code.startsWith("ref.L_")||LEGACY.contains(code)){
-    String phase=code.startsWith("ref.L_demo_")||Set.of("preparation","demolition","electrical","plumbing").contains(code)?"rough":
-      code.startsWith("ref.L_door_")||code.startsWith("ref.L_kitchen_")||Set.of("joinery","equipment").contains(code)?"assembly":"finishing";
+   }else if(code.startsWith("ref.L_")||LEGACY.contains(code)||code.startsWith("spb.glazing.")||code.startsWith("spb.insulation.")||code.equals("spb.kitchen.assembly")){
+    String phase=code.startsWith("spb.glazing.")||code.startsWith("spb.insulation.")||code.startsWith("ref.L_demo_")||ENGINEERING_ROUGH.contains(code.replaceFirst("^ref\\.",""))||Set.of("preparation","demolition","electrical","plumbing").contains(code)?"rough":
+      code.equals("spb.kitchen.assembly")||ENGINEERING_ASSEMBLY.contains(code.replaceFirst("^ref\\.",""))||code.startsWith("ref.L_door_")||code.startsWith("ref.L_kitchen_")||Set.of("joinery","equipment").contains(code)?"assembly":"finishing";
     unknown.computeIfAbsent(phase,k->new TreeSet<>()).add(line.name().replaceFirst("^.*?:\\s*", ""));
     if(code.equals("preparation"))preparation=true;
    }
@@ -70,7 +72,7 @@ public final class TimePlanner {
   return known;
  }
  private static String version(Map<String,TimeNormRow> norms){
-  try{return "phases-2-"+HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(norms.toString().getBytes(StandardCharsets.UTF_8))).substring(0,12);}
+  try{return "phases-4-"+HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(norms.toString().getBytes(StandardCharsets.UTF_8))).substring(0,12);}
   catch(java.security.NoSuchAlgorithmException e){throw new IllegalStateException(e);}
  }
  private static int days(BigDecimal area,String rate,int base){return area.multiply(new BigDecimal(rate)).add(BigDecimal.valueOf(base)).setScale(0,RoundingMode.CEILING).intValueExact();}

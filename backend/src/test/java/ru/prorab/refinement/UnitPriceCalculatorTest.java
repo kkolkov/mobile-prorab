@@ -120,7 +120,7 @@ class UnitPriceCalculatorTest {
         assertTrue(after.total().expected().compareTo(before.total().expected())>0);
         assertNotEquals(before.pricingVersion(),after.pricingVersion());
         assertEquals(before.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow().unitPriceRub().multiply(new BigDecimal("2")),after.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow().unitPriceRub());
-        assertEquals(486,jdbc.queryForObject("select count(*) from price_matrix",Integer.class));
+        assertEquals(496,jdbc.queryForObject("select count(*) from price_matrix",Integer.class));
     }
     @Test void missingPriceFailsInsteadOfFallingBackToHiddenMock(){
         jdbc.update("delete from price_matrix where code='average.work.wallpaper'");
@@ -181,5 +181,88 @@ class UnitPriceCalculatorTest {
         var hidden=calc(data(Kitchen.defaults(),new Exteriors("none",yesWorks,yesWorks)));
         assertEquals(calc(data(Kitchen.defaults(),none())).total(),hidden.total());
         assertEquals(yes.timePlan().totalDays(),yes.durationMinDays());
+    }
+
+    @Test void engineeringUsesCatalogAndKeepsClassSpecificPricesWithoutExtraCoefficient(){
+        var result=calc(data(Kitchen.defaults(),none()));
+        assertTrue(result.details().lines().stream().noneMatch(l->Set.of("electrical","plumbing").contains(l.priceCode())));
+        var sockets=result.details().lines().stream().filter(l->l.name().equals("Комната: розетки")).findFirst().orElseThrow();
+        assertEquals("ref.E_socket_dry_comfort",sockets.priceCode());
+        assertEquals(0,sockets.quantity().compareTo(new BigDecimal("14")));
+        assertEquals(new BigDecimal("9100"),sockets.amountRub());
+        assertEquals(0,sockets.coefficient().compareTo(BigDecimal.ONE));
+        var cable=result.details().lines().stream().filter(l->l.priceCode().equals("ref.E_cable_socket")).toList();
+        assertEquals(1,cable.size());assertEquals(0,cable.getFirst().quantity().compareTo(new BigDecimal("2"))); // ceil(68*2*1.05/100)
+        var before=result.total().expected();
+        jdbc.update("update price_matrix set unit_price_rub=unit_price_rub+100 where code='ref.E_socket_dry_comfort'");entityManager.clear();
+        assertEquals(new BigDecimal("1700"),calc(data(Kitchen.defaults(),none())).total().expected().subtract(before));
+    }
+    @Test void keepElectricalSkipsAllElectricalCatalogRowsAndMissingUsedRateFails(){
+        var d=data(Kitchen.defaults(),none());var a=d.apartment();
+        var keep=new Apartment(a.currentState(),a.targetState(),a.finishLevel(),a.areaM2(),null,a.floor(),a.walls(),a.ceiling(),a.doors(),a.demolition(),a.wallPreparation(),a.floorPreparation(),"keep");
+        var result=calc(new RefinementData(keep,d.rooms(),false,d.kitchens(),none(),Set.of()));
+        assertTrue(result.details().lines().stream().noneMatch(l->l.priceCode().startsWith("ref.E_")||l.priceCode().equals("ref.L_cable")));
+        jdbc.update("delete from price_matrix where code='ref.E_socket_dry_comfort'");entityManager.clear();
+        assertThrows(IllegalStateException.class,()->calc(d));
+    }
+    @Test void finishOnlyHasSameWaterRoutesButNoFixturesOrTheirInstallation(){
+        var d=data(Kitchen.defaults(),none());var a=d.apartment();
+        var rooms=List.of(new Room(UUID.randomUUID(),"combined_bathroom","Санузел",new BigDecimal("8"),"inherit","inherit","inherit",false),new Room(UUID.randomUUID(),"living","Комната",new BigDecimal("60"),"inherit","inherit","inherit",false));
+        var finish=new Apartment(a.currentState(),TargetState.FINISH_ONLY,a.finishLevel(),a.areaM2(),null,a.floor(),a.walls(),a.ceiling(),a.doors(),a.demolition(),a.wallPreparation(),a.floorPreparation(),a.electrical());
+        var ready=calc(new RefinementData(a,rooms,false,Map.of(),none(),Set.of()));
+        var shell=calc(new RefinementData(finish,rooms,false,Map.of(),none(),Set.of()));
+        var pipes=ready.details().lines().stream().filter(l->l.priceCode().equals("ref.L_pipe_water")).findFirst().orElseThrow();
+        assertEquals(pipes,shell.details().lines().stream().filter(l->l.priceCode().equals("ref.L_pipe_water")).findFirst().orElseThrow());
+        assertTrue(shell.details().lines().stream().noneMatch(l->l.priceCode().startsWith("ref.A_")||Set.of("ref.L_wc","ref.L_bath","ref.L_basin_single").contains(l.priceCode())));
+        for(String code:List.of("ref.A_bath_comfort","ref.A_basin_comfort","ref.A_wc_floor_comfort"))assertEquals(1,ready.details().lines().stream().filter(l->l.priceCode().equals(code)).count());
+        assertTrue(ready.total().expected().compareTo(shell.total().expected())>0);
+    }
+    @Test void partialElectricalHalvesWorkVolumesButMaterialsRoundAtProjectLevel(){
+        var d=data(Kitchen.defaults(),none());var a=d.apartment();
+        var partial=new Apartment(a.currentState(),a.targetState(),a.finishLevel(),a.areaM2(),null,a.floor(),a.walls(),a.ceiling(),a.doors(),a.demolition(),a.wallPreparation(),a.floorPreparation(),"partial");
+        var full=calc(d);var half=calc(new RefinementData(partial,d.rooms(),false,d.kitchens(),none(),Set.of()));
+        for(String code:List.of("ref.L_cable","ref.L_backbox","ref.L_chase_other")){
+            var all=full.details().lines().stream().filter(l->l.priceCode().equals(code)).map(l->l.quantity()).reduce(BigDecimal.ZERO,BigDecimal::add);
+            var part=half.details().lines().stream().filter(l->l.priceCode().equals(code)).map(l->l.quantity()).reduce(BigDecimal.ZERO,BigDecimal::add);
+            assertEquals(0,all.multiply(new BigDecimal("0.5")).compareTo(part));
+        }
+    }
+
+    @Test void spbKitchenIncludesSinkOnceAndAssemblyIsSeparateWithoutClassMultiplier(){
+        for(String facade:List.of("plastic","enamel")){
+            var k=new Kitchen("new",new BigDecimal("3"),facade,"laminated","none",false,false,false,false);
+            var result=calc(data(k,none()));
+            var kit=result.details().lines().stream().filter(l->l.priceCode().equals("spb.kitchen."+facade)).findFirst().orElseThrow();
+            assertEquals(new BigDecimal(facade.equals("plastic")?"192000":"222000"),kit.amountRub());
+            assertEquals(0,kit.coefficient().compareTo(BigDecimal.ONE));
+            assertEquals(new BigDecimal("9450"),result.details().lines().stream().filter(l->l.priceCode().equals("spb.kitchen.assembly")).findFirst().orElseThrow().amountRub());
+            assertTrue(result.details().lines().stream().noneMatch(l->l.priceCode().startsWith("ref.K_sink_")||l.priceCode().startsWith("ref.K_cabinets_")||l.priceCode().equals("joinery")));
+            assertEquals(1,result.details().lines().stream().filter(l->l.priceCode().equals("ref.L_kitchen_sink")).count());
+        }
+    }
+    @Test void stoneCannotBeAddedOnTopOfBundledPostformingAndKeepDoesNotBuyKitchen(){
+        var stone=new Kitchen("new",new BigDecimal("3"),"plastic","stone","none",false,false,false,false);
+        var result=calc(data(stone,none()));
+        assertTrue(result.details().lines().stream().noneMatch(l->l.priceCode().startsWith("spb.")));
+        assertTrue(result.assumptions().stream().anyMatch(n->n.contains("цена обычной столешницы")));
+        var keep=new Kitchen("keep",new BigDecimal("3"),"plastic","laminated","none",false,false,false,false);
+        var kept=calc(data(keep,none()));assertEquals(0,kept.kitchen().expected().signum());
+        assertTrue(kept.details().lines().stream().anyMatch(l->l.priceCode().equals("ref.K_sink_comfort")));
+    }
+    @Test void spbExteriorUsesInstalledPricesOnceAndExplicitRefusalSkipsThem(){
+        var warm=new Exterior(new BigDecimal("4"),"new","yes","tile","paint","none",false,false);
+        var result=calc(data(Kitchen.defaults(),new Exteriors("loggia",warm, warm)));
+        var glazing=result.details().lines().stream().filter(l->l.priceCode().equals("spb.glazing.warm")).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("6666.67"),glazing.unitPriceRub());assertEquals(0,glazing.coefficient().compareTo(BigDecimal.ONE));
+        var floor=result.details().lines().stream().filter(l->l.priceCode().equals("spb.insulation.floor50")).findFirst().orElseThrow();assertEquals(new BigDecimal("4000"),floor.amountRub());
+        assertTrue(result.details().lines().stream().noneMatch(l->Set.of("glazing","preparation","spb.insulation.wall30").contains(l.priceCode())));
+        var cold=new Exterior(new BigDecimal("4"),"new","no","tile","paint","none",false,false);
+        var coldResult=calc(data(Kitchen.defaults(),new Exteriors("loggia",cold,cold)));
+        assertTrue(coldResult.details().lines().stream().noneMatch(l->l.priceCode().startsWith("spb.insulation.")));
+        assertTrue(coldResult.details().lines().stream().anyMatch(l->l.priceCode().equals("spb.glazing.cold")));
+        var no=new Exterior(new BigDecimal("4"),"keep","no","tile","paint","none",false,false);
+        assertTrue(calc(data(Kitchen.defaults(),new Exteriors("loggia",no,no))).details().lines().stream().noneMatch(l->l.priceCode().startsWith("spb.")));
+        jdbc.update("delete from price_matrix where code='spb.glazing.warm'");entityManager.clear();
+        assertThrows(IllegalStateException.class,()->calc(data(Kitchen.defaults(),new Exteriors("loggia",warm,warm))));
     }
 }
