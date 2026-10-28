@@ -23,8 +23,6 @@ public class PriceCatalog {
         for(PriceMatrixEntry p:repository.findAll()){
             rates.put(p.getCode(),new Rate(p.getCode(),p.getUnit(),p.getUnitPriceRub(),p.getRoughShare(),p.getLaborShare(),p.getSourceNote(),p.getPriceDate(),p.isVerified()));
         }
-        Set<String> required=Set.of("floor","wall","ceiling","preparation","demolition","electrical","plumbing","joinery","equipment","glazing");
-        if(!rates.keySet().containsAll(required))throw new IllegalStateException("Incomplete price matrix");
         try {
             String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(rates.toString().getBytes(StandardCharsets.UTF_8)));
             return new Snapshot("price-matrix-"+hash.substring(0,16),Map.copyOf(rates));

@@ -204,3 +204,12 @@ Render и APK этой итерацией не обновлялись. Тест�
 - Реальные цены, геометрия и длительность из модуля 1.2.0 не проверены: используется явно помеченный demo provider.
 - Внешний сборщик аналитики не подключён; события публикуются в браузере.
 - Старые пробелы мастера, не относящиеся к этой итерации, перечислены в docs/CODEX_CONTEXT.md.
+
+## 2026-10-28 — imported prices and work durations
+
+- Backend: 86 tests passed (H2/Flyway), including exact price averages, material/work separation, class-specific kits, package aggregation, immutable estimates, exact person-hours, old TimePlan JSON, admin optimistic locking.
+- PostgreSQL 17: local Flyway V13/V14 applied; 486 price rows and 16 time norms.
+- WEB: 19 unit tests; 4 browser cases at 1280/390 for price/time admin, retained conflicting input, table layout.
+- Live local API smoke: registration, draft, 5-step estimate, recalculation/apply, financial baseline, start schedule, cleanup of test project. 64 m² fixture: 1,464,200 RUB calculated cost; this is a software fixture, not comparison with a contractor's final bill.
+- Mobile: 15 tests, TypeScript and lint passed. No physical Android installation yet.
+- Deployment and APK completion must be verified separately after publication.

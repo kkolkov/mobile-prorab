@@ -23,7 +23,7 @@
         "monochromeImage": "./assets/adaptive-icon.png"
       },
       "package": "ru.prorab.mobile",
-      "versionCode": 5
+      "versionCode": 7
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -39,6 +39,15 @@
           "photosPermission": "Выбор фотографий для отчёта о завершении этапа ремонта.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true,
+            "usePrecompiledModules": false
+          }
         }
       ]
     ],

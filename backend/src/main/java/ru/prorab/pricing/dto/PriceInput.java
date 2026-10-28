@@ -7,7 +7,7 @@ public record PriceInput(
  @NotNull @DecimalMin("0.01") @DecimalMax("99999999.99") @Digits(integer=8,fraction=2) BigDecimal unitPriceRub,
  @NotNull @DecimalMin("0") @DecimalMax("1") @Digits(integer=1,fraction=4) BigDecimal roughShare,
  @NotNull @DecimalMin("0") @DecimalMax("1") @Digits(integer=1,fraction=4) BigDecimal laborShare,
- @NotBlank @Size(max=500) String sourceNote,
+ @NotBlank @Size(max=4000) String sourceNote,
  @NotNull @PastOrPresent LocalDate priceDate,
  boolean verified
 ) {}
