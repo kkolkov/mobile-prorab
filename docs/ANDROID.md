@@ -95,3 +95,14 @@ fa10c67409b39ebc8fad392db5ab41b5452022fe17f3161b1d3aa5536f5ab5c9,
 INTERNET и публичный HTTPS API подтверждены. Физическая установка не проверена.
 Содержит опубликованный релиз цен/сроков catalog-pricing-5; новая политика и
 локальная catalog-pricing-6 разрабатывались после отправки сборки и в неё не входят.
+
+
+## APK №8 — релиз 4d67c60
+
+https://expo.dev/artifacts/eas/y1SvHMG0OruUkmYgoa43ifKUjbgmwMOr6tY5710VAmg.apk
+EAS 769e97a0-2cf8-4bd5-bdd6-e0110e8177f4, готова 28.10.2026 19:34 UTC.
+Локально mobile/build/android/mobile-prorab-1.0.0-build8.apk.
+Включает политику и смену пароля, использует API Render с catalog-pricing-7.
+ZIP без повреждений, apksigner verify успешен, сертификат совпадает с №5/7;
+ru.prorab.mobile, versionCode8, minSdk24, INTERNET, публичный API и маршрут
+/auth/password в bundle подтверждены. Физическое устройство не проверено.

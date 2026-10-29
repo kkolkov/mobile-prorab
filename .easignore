@@ -29,3 +29,6 @@
 /settings.gradle
 /gradlew
 /gradlew.bat
+
+# Analyst workbooks are not needed for the mobile build.
+**/*.xlsx
