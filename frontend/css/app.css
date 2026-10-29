@@ -244,3 +244,49 @@ body:has(.project-grid) #app > .shell > .top { display:none; }
  .projects-heading #create-project { grid-column:1; grid-row:3; width:100%; }
 }
 @media(prefers-reduced-motion:reduce) { .account-chevron { transition:none; } }
+
+/* Preliminary estimate: primary actions share a row when their labels fit. */
+.actions.estimate-actions{flex-wrap:wrap}
+.actions.estimate-actions>button{flex:1 1 240px;min-width:0}
+@media(max-width:640px){.actions.estimate-actions>button{flex-basis:100%}}
+
+.estimate-summary{margin:24px 0}
+.estimate-summary table{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--card);font-size:14px}
+.estimate-summary th,.estimate-summary td{padding:14px 12px;border-bottom:1px solid var(--line);text-align:right;overflow-wrap:anywhere}
+.estimate-summary th:first-child{text-align:left;width:43%}
+.estimate-summary thead th,.estimate-summary tfoot{background:#edf1e8;font-weight:650}
+.estimate-summary small{display:block;font-weight:400;color:var(--muted);line-height:1.5;margin-top:5px}
+.estimate-summary tfoot td{font-weight:700}
+@media(max-width:640px){
+ .estimate-summary thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .estimate-summary table,.estimate-summary tbody,.estimate-summary tfoot{display:block}
+ .estimate-summary tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line);padding:12px 0}
+ .estimate-summary th:first-child{grid-column:1/-1;width:auto}
+ .estimate-summary th,.estimate-summary td{border:0;padding:8px;text-align:left}
+ .estimate-summary td::before{content:attr(data-label);display:block;font-size:12px;font-weight:400;color:var(--muted);margin-bottom:6px}
+}
+
+.time-summary table{table-layout:fixed}
+.time-summary th:first-child{width:40%}
+.time-summary th,.time-summary td{overflow-wrap:anywhere}
+.time-summary small{color:var(--muted);line-height:1.5}
+@media(max-width:640px){
+ .time-summary thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .time-summary table,.time-summary tbody{display:block}
+ .time-summary tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--line);padding:10px 0}
+ .time-summary th:first-child{grid-column:1/-1;width:auto}
+ .time-summary td,.time-summary th{border:0;padding:8px}
+ .time-summary td[colspan]{grid-column:1/-1}
+ .time-summary td[data-label]::before{content:attr(data-label);display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+}
+
+.summary.estimate-overview>div:first-child { grid-column: 1/-1; background: var(--card); border-color: var(--line); }
+.summary.estimate-overview>div:nth-child(3) { background: var(--lavender); border-color: #ddd8e8; }
+.estimate-parameters { grid-column: 1/-1; margin: 0; max-width: none; width: 100%; box-sizing: border-box; }
+
+ .project-status-row { display: flex; align-items: center; gap: 8px; }
+.project-status-row h2 { margin: 0; }
+.project-status-row { margin-top: 6px; }
+.status-info { padding: 8px; min-width: 40px; min-height: 40px; background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 20px; }
+.status-info[hidden] { display: none; }
+#status-popup p { margin: 16px 0 24px; }

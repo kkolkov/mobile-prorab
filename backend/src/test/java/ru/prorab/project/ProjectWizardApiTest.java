@@ -31,7 +31,23 @@ class ProjectWizardApiTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
 
-    @Test void roomsCountIsSeparateFromKitchensAndSeedsRefinement() throws Exception {
+    @Test void cp01WithoutAddressCreatesAndReopensAndPreservesLegacyAddress() throws Exception {
+        for (String address : new String[]{"", ",\"address\":\"Старый адрес\""}) {
+            JsonNode p = json.readTree(mvc.perform(post("/api/projects/draft")
+                    .contentType("application/json").content("{\"areaM2\":33" + address + "}"))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+            String base = "/api/projects/" + p.get("projectId").asText();
+            mvc.perform(put(base + "/steps/1").contentType("application/json").content(json.writeValueAsString(
+                    java.util.Map.of("version", p.get("version").asLong(), "areaM2", 38, "name", "Мой проект"))))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.completedStep").value(1));
+            JsonNode reopened = json.readTree(mvc.perform(get(base)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.areaM2").value(38)).andExpect(jsonPath("$.name").value("Мой проект"))
+                    .andReturn().getResponse().getContentAsString());
+            assertEquals(p.get("address"), reopened.get("address"));
+        }
+    }
+
+ @Test void roomsCountIsSeparateFromKitchensAndSeedsRefinement() throws Exception {
         JsonNode p=json.readTree(mvc.perform(post("/api/projects/draft").contentType("application/json").content("{\"areaM2\":90}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
         String base="/api/projects/"+p.get("projectId").asText();
         for(String count:new String[]{"-1","21","1.5"})mvc.perform(put(base+"/steps/4").contentType("application/json").content("{\"roomsCount\":"+count+",\"bathroomsCount\":1,\"version\":"+p.get("version").asLong()+"}")).andExpect(status().isBadRequest());

@@ -24,11 +24,65 @@ class UnitPriceCalculatorTest {
     }
     RefinedEstimate calc(RefinementData d){return calculator.calculate(UUID.randomUUID(),1,d,new AreaAllocator().allocate(project,d.apartment().areaM2(),d.rooms()));}
     Exteriors none(){return new Exteriors("none",Exterior.defaults(),Exterior.defaults());}
-    @Test void importedAveragesAreSeparateAndDoNotDoubleChargeLaminateUnderlay(){
+    @Test void compactGroupsReconcileExactlyWithStoredEstimateAndSeparateRoughPipesFromEquipment(){
+        var result=calc(data(Kitchen.defaults(),none()));var details=result.details();
+        assertEquals(4,details.groups().size());
+        assertEquals(details.labor(),details.groups().stream().map(g->g.laborRub()).reduce(BigDecimal.ZERO,BigDecimal::add));
+        assertEquals(details.roughMaterials().add(details.finishMaterials()),details.groups().stream().map(g->g.materialsRub()).reduce(BigDecimal.ZERO,BigDecimal::add));
+        assertEquals(result.total().expected(),details.groups().stream().map(g->g.totalRub()).reduce(BigDecimal.ZERO,BigDecimal::add));
+        for(var g:details.groups())assertEquals(g.totalRub(),g.laborRub().add(g.materialsRub()));
+        assertEquals(ru.prorab.pricing.model.CostCategory.ROUGH,ru.prorab.pricing.model.CostCategory.forPrice("ref.P_pipe_c","repair"));
+        assertEquals(ru.prorab.pricing.model.CostCategory.EQUIPMENT,ru.prorab.pricing.model.CostCategory.forPrice("ref.A_wc_floor_budget","repair"));
+        assertEquals(ru.prorab.pricing.model.CostCategory.DOORS_CEILINGS,ru.prorab.pricing.model.CostCategory.forPrice("average.material.paint_ceiling","repair"));
+        assertEquals(ru.prorab.pricing.model.CostCategory.ROUGH,ru.prorab.pricing.model.CostCategory.forPrice("ref.L_demo_c_stretch","repair"));
+        assertEquals(ru.prorab.pricing.model.CostCategory.FINISH,ru.prorab.pricing.model.CostCategory.forPrice("average.work.tile_wall","repair"));
+        var extra=calc(data(Kitchen.defaults(),new Exteriors("balcony",Exterior.defaults(),Exterior.defaults())));
+        assertTrue(extra.details().groups().stream().anyMatch(g->g.code().equals("other")&&g.totalRub().signum()>0));
+        assertEquals(extra.total().expected(),extra.details().groups().stream().map(g->g.totalRub()).reduce(BigDecimal.ZERO,BigDecimal::add));
+    }
+    @Test void oldCostSnapshotsDoNotInventGroups()throws Exception{
+        var old=new com.fasterxml.jackson.databind.ObjectMapper().readValue("{\"roughMaterials\":10,\"finishMaterials\":20,\"labor\":30,\"lines\":[]}",ru.prorab.pricing.dto.CostDetails.class);
+        assertNull(old.groups());assertEquals(new BigDecimal("30"),old.labor());
+    }
+
+    @Test void editedCoefficientsAffectNewCalculationsWithoutChangingOldSnapshotsOrWorkRates(){
+        var d=data(Kitchen.defaults(),none());var before=calc(d);
+        jdbc.update("update calculation_coefficients set coefficient_value=2 where code='level_comfort'");
+        jdbc.update("update calculation_coefficients set coefficient_value=1.25 where code='reserve'");entityManager.clear();
+        var after=calc(d);
+        var oldMaterial=before.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow();
+        var newMaterial=after.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow();
+        assertEquals(0,oldMaterial.coefficient().compareTo(new BigDecimal("1.3")));
+        assertEquals(0,newMaterial.coefficient().compareTo(new BigDecimal("2")));
+        assertEquals(oldMaterial.quantity(),newMaterial.quantity());
+        assertEquals(before.details().lines().stream().filter(l->l.priceCode().equals("average.work.laminate")).toList(),after.details().lines().stream().filter(l->l.priceCode().equals("average.work.laminate")).toList());
+        assertEquals(after.total().max().multiply(new BigDecimal("1.25")).setScale(0,java.math.RoundingMode.HALF_UP),after.total().withReserve());
+        assertTrue(after.assumptions().stream().anyMatch(v->v.contains("reserve=1.25")));
+        jdbc.update("update calculation_coefficients set coefficient_value=0.5 where code='wall_share'");entityManager.clear();
+        var smaller=calc(d);
+        var oldWall=after.details().lines().stream().filter(l->l.priceCode().equals("average.work.wallpaper")).findFirst().orElseThrow();
+        var newWall=smaller.details().lines().stream().filter(l->l.priceCode().equals("average.work.wallpaper")).findFirst().orElseThrow();
+        assertTrue(newWall.quantity().compareTo(oldWall.quantity())<0);
+        assertEquals(oldWall.unitPriceRub(),newWall.unitPriceRub());
+    }
+
+ @Test void workbookApplianceInstallationUsesIndividualRatesAndNoBundleDuplicate(){
+        var result=calc(data(new Kitchen("keep",null,"unknown","unknown","hob",true,true,true,true),none()));
+        var expected=Map.of("ref.L_kitchen_fridge",2040,"ref.L_kitchen_hob",2040,"ref.L_kitchen_oven",1840,"ref.L_kitchen_hood",2090,"ref.L_kitchen_dishwasher",2240);
+        for(var entry:expected.entrySet()){
+            var lines=result.details().lines().stream().filter(l->l.priceCode().equals(entry.getKey())).toList();
+            assertEquals(1,lines.size());assertEquals(entry.getValue().intValue(),lines.getFirst().amountRub().intValueExact());
+            assertEquals(0,lines.getFirst().coefficient().compareTo(BigDecimal.ONE));
+        }
+        assertFalse(result.details().lines().stream().anyMatch(l->l.priceCode().equals("ref.L_kitchen_tech")));
+        assertTrue(result.details().lines().stream().anyMatch(l->l.priceCode().equals("ref.K_tech1_comfort")));
+    }
+
+ @Test void importedAveragesAreSeparateAndDoNotDoubleChargeLaminateUnderlay(){
         var result=calc(data(Kitchen.defaults(),none()));
         var labor=result.details().lines().stream().filter(l->l.priceCode().equals("average.work.laminate")).findFirst().orElseThrow();
         var material=result.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow();
-        assertEquals(new BigDecimal("341.88"),labor.unitPriceRub());
+        assertEquals(new BigDecimal("1090.00"),labor.unitPriceRub());
         assertEquals(new BigDecimal("1516.88"),material.unitPriceRub());
         assertEquals(0,labor.coefficient().compareTo(BigDecimal.ONE));
         assertEquals(0,material.coefficient().compareTo(new BigDecimal("1.3")));
@@ -120,7 +174,7 @@ class UnitPriceCalculatorTest {
         assertTrue(after.total().expected().compareTo(before.total().expected())>0);
         assertNotEquals(before.pricingVersion(),after.pricingVersion());
         assertEquals(before.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow().unitPriceRub().multiply(new BigDecimal("2")),after.details().lines().stream().filter(l->l.priceCode().equals("average.material.laminate")).findFirst().orElseThrow().unitPriceRub());
-        assertEquals(496,jdbc.queryForObject("select count(*) from price_matrix",Integer.class));
+        assertEquals(500,jdbc.queryForObject("select count(*) from price_matrix",Integer.class));
     }
     @Test void missingPriceFailsInsteadOfFallingBackToHiddenMock(){
         jdbc.update("delete from price_matrix where code='average.work.wallpaper'");

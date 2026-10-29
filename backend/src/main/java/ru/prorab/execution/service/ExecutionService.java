@@ -115,7 +115,7 @@ public class ExecutionService {
  }
  private ExecutionResponse response(Project p,ProjectExecution record){
   var s=read(record.getStateJson(),ExecutionState.class);var latest=estimate(p);var b=s.budget();
-  BigDecimal plan=b==null?null:b.total().expected(),reserve=b==null?null:b.total().max().multiply(new BigDecimal("1.1")).setScale(0,RoundingMode.HALF_UP);
+  BigDecimal plan=b==null?null:b.total().expected(),reserve=b==null?null:b.total().withReserve();
   BigDecimal spent=s.expenses().stream().map(Expense::amount).reduce(BigDecimal.ZERO,BigDecimal::add);
   var categories=new ArrayList<ExecutionResponse.Category>();var details=b==null?null:b.details();
   String[] keys={"rough","finish","labor","extra"},names={"Черновые материалы","Чистовые материалы и оснащение","Работы","Дополнительные расходы"};

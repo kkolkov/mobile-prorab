@@ -59,7 +59,7 @@ class RefinementApiTest {
         call("POST",url+"/calculate",Map.of("version",old.at("/project/version").asLong()),200);
         JsonNode candidate=ready(url);
         assertEquals(100000,candidate.at("/project/budgetMinRub").asInt());
-        assertEquals("catalog-pricing-7",candidate.at("/candidateEstimate/algorithmVersion").asText());
+        assertEquals("catalog-pricing-8",candidate.at("/candidateEstimate/algorithmVersion").asText());
         call("POST",url+"/apply",Map.of("version",candidate.at("/project/version").asLong(),"estimateId",candidate.at("/candidateEstimate/id").asText()),200);
         JsonNode reloaded=call("GET",url,null,200);
         assertEquals(candidate.get("candidateEstimate"),reloaded.get("activeEstimate"));
@@ -135,6 +135,21 @@ class RefinementApiTest {
         refinementService.complete(oldJob,firstEstimate);
         assertEquals(second.get("candidateEstimate"),call("GET",url,null,200).get("candidateEstimate"));
         call("POST",url+"/apply",Map.of("version",second.at("/project/version").asLong(),"estimateId",firstEstimate.id()),400);
+    }
+
+    @Test void ceilingHeightAllowsTwoThroughTenAndRejectsOutsideBounds()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);
+        ObjectNode data=original.get("data").deepCopy();
+        var validation=new ru.prorab.refinement.service.RefinementValidation();
+        for(String height:List.of("2","2.7","5.01","10")){
+            ((ObjectNode)data.get("apartment")).put("ceilingHeight",new java.math.BigDecimal(height));
+            validation.validate(json.treeToValue(data,ru.prorab.refinement.model.RefinementData.class));
+        }
+        for(String height:List.of("1.99","10.01")){
+            ((ObjectNode)data.get("apartment")).put("ceilingHeight",new java.math.BigDecimal(height));
+            var value=json.treeToValue(data,ru.prorab.refinement.model.RefinementData.class);
+            assertThrows(ru.prorab.common.exception.BusinessException.class,()->validation.validate(value));
+        }
     }
 
     @Test void failedCalculationKeepsInputsAndActiveEstimateAndRetryRecovers()throws Exception{

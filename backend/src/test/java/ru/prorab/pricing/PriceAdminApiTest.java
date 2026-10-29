@@ -20,10 +20,25 @@ class PriceAdminApiTest {
  JsonNode list()throws Exception{return json.readTree(mvc.perform(get(path)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));}
  ObjectNode floor()throws Exception{for(var row:list().get("rows"))if(row.get("code").asText().equals("floor"))return (ObjectNode)row;throw new AssertionError();}
  JsonNode save(ObjectNode body,int status)throws Exception{return json.readTree(mvc.perform(put(path+"/floor").contentType("application/json").content(json.writeValueAsString(body))).andExpect(status().is(status)).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));}
+ @Test void coefficientsArePersistedBoundedAndProtectedFromStaleWrites()throws Exception{
+  String root="/api/porabadmin/coefficients";
+  var all=json.readTree(mvc.perform(get(root)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());assertEquals(12,all.size());
+  ObjectNode body=null;for(var r:all)if(r.get("code").asText().equals("reserve"))body=(ObjectNode)r;
+  assertNotNull(body);assertEquals(1.1,body.get("value").asDouble());
+  for(double invalid:new double[]{-1,0,0.9,11,1.12345}){
+   body.put("value",invalid);mvc.perform(put(root+"/reserve").contentType("application/json").content(body.toString())).andExpect(status().isBadRequest());
+  }
+  body.put("value",1.25);mvc.perform(put(root+"/reserve").contentType("application/json").content(body.toString())).andExpect(status().isOk()).andExpect(jsonPath("$.value").value(1.25));
+  mvc.perform(put(root+"/reserve").contentType("application/json").content(body.toString())).andExpect(status().isConflict());
+  var fresh=json.readTree(mvc.perform(get(root)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+  for(var r:fresh)if(r.get("code").asText().equals("reserve"))assertEquals(1.25,r.get("value").asDouble());
+  mvc.perform(put(root+"/unknown").contentType("application/json").content(body.toString())).andExpect(status().isNotFound());
+  mvc.perform(get("/porabadmin/coefficients.html")).andExpect(status().isOk());
+ }
  @Test void importedAverageCanBeEditedDeletedAndRestoredWithConflictProtection()throws Exception{
   String code="average.work.laminate";
   ObjectNode body=null;for(var r:list().get("rows"))if(r.get("code").asText().equals(code))body=(ObjectNode)r;
-  assertNotNull(body);assertEquals(341.88,body.get("unitPriceRub").asDouble());
+  assertNotNull(body);assertEquals(1090.00,body.get("unitPriceRub").asDouble());
   body.put("unitPriceRub",400);body.put("sourceNote","Проверка длинного описания состава: "+"источник ".repeat(100));
   var saved=json.readTree(mvc.perform(put(path+"/"+code).contentType("application/json").content(body.toString())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
   mvc.perform(put(path+"/"+code).contentType("application/json").content(body.toString())).andExpect(status().isConflict());
@@ -43,7 +58,7 @@ class PriceAdminApiTest {
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());
  }
  @Test void publicAdminDoesNotOpenProjectOrAccountEndpoints()throws Exception{
-  assertEquals(496,list().get("rows").size());assertEquals(0,list().get("missing").size());
+  assertEquals(500,list().get("rows").size());assertEquals(0,list().get("missing").size());
   mvc.perform(get("/porabadmin")).andExpect(status().isOk()).andExpect(forwardedUrl("/porabadmin/index.html"));
   mvc.perform(get("/api/projects")).andExpect(status().isUnauthorized());mvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
  }
@@ -69,8 +84,8 @@ class PriceAdminApiTest {
  @Test void deleteRequiresCurrentVersionAndRestoreDoesNotInsertFakePrice()throws Exception{
   var row=floor();mvc.perform(post(path+"/floor/delete?version=999")).andExpect(status().isConflict());
   mvc.perform(post(path+"/floor/delete?version="+row.get("version").asLong())).andExpect(status().isOk());
-  assertEquals(495,list().get("rows").size());assertEquals("floor",list().at("/missing/0/code").asText());assertThrows(IllegalStateException.class,()->catalog.snapshot().rate("floor"));
-  save(row,404);row.putNull("version");save(row,200);assertEquals(496,list().get("rows").size());assertNotNull(catalog.snapshot());
+  assertEquals(499,list().get("rows").size());assertEquals("floor",list().at("/missing/0/code").asText());assertThrows(IllegalStateException.class,()->catalog.snapshot().rate("floor"));
+  save(row,404);row.putNull("version");save(row,200);assertEquals(500,list().get("rows").size());assertNotNull(catalog.snapshot());
   save(row,409);
  }
 }

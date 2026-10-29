@@ -42,11 +42,13 @@ export interface Draft<K extends Section = Section> {
 export type Drafts = { [K in Section]?: Draft<K> };
 export interface Totals { min: number; max: number; expected: number; withReserve: number }
 export interface CostDetails {
+ groups?: {code:string;title:string;description:string;laborRub:number;materialsRub:number;totalRub:number}[] | null;
  roughMaterials: number; finishMaterials: number; labor: number;
  lines: {section:string;name:string;priceCode:string;unit:string;quantity:number;unitPriceRub:number;coefficient:number;amountRub:number;source:string;priceDate:string}[];
 }
 export interface Estimate {
-  timePlan?: {version:string;totalDays:number;phases:{id:string;title:string;durationDays:number;dependencies:string[]}[];workloads?:{code:string;title:string;quantityM2:number;personHoursPer100m2:number;personHours:number;source:string;sourceDate:string}[];assumptions?:string[]} | null;
+  durationMinDays?:number|null; durationMaxDays?:number|null;
+  timePlan?: {version:string;totalDays:number;phases:{id:string;title:string;durationDays:number;dependencies:string[]}[];workloads?:{code:string;title:string;phase?:string;quantityM2:number;personHoursPer100m2:number;personHours:number;source:string;sourceDate:string}[];assumptions?:string[]} | null;
   details?: CostDetails | null;
   id: string; total: Totals; repair: Totals | null; kitchen: Totals | null;
   balconyIncluded: number; loggiaIncluded: number; reasons: string[]; assumptions: string[];

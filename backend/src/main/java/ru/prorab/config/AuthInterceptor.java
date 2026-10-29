@@ -26,6 +26,7 @@ public class AuthInterceptor implements HandlerInterceptor {
    return true;
   }
   // The price admin is deliberately public for this MVP. Project/account routes stay protected.
+  if(path.equals("/api/porabadmin/coefficients")||path.matches("/api/porabadmin/coefficients/[a-z_]+"))return true;
   if(path.equals("/api/porabadmin/time-norms")||path.matches("/api/porabadmin/time-norms/[a-z_]+"))return true;
   if(path.equals("/api/porabadmin/prices")||path.matches("/api/porabadmin/prices/[A-Za-z0-9_.]+(?:/delete)?"))return true;
   var session=auth.authenticate(request.getHeader("Authorization"));

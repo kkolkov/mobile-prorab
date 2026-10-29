@@ -26,6 +26,19 @@ class ExecutionApiTest {
  }
  JsonNode command(String path,String action,JsonNode s,Map<String,Object> data)throws Exception{var b=new HashMap<>(data);b.put("version",s.get("version").asLong());return call(path+"/"+action,b,200);}
  @org.springframework.test.context.bean.override.mockito.MockitoBean ru.prorab.execution.service.OcrSpaceClient ocr;
+ @Test void financialTrackerUsesSavedReserveInsteadOfHardcodedTenPercent()throws Exception{
+  var previous=jdbc.queryForObject("select coefficient_value from calculation_coefficients where code='reserve'",java.math.BigDecimal.class);
+  try{
+   jdbc.update("update calculation_coefficients set coefficient_value=1.25 where code='reserve'");
+   String path=create();var s=call(path,null,200);var project=call(path.replace("/execution",""),null,200);
+   var totals=project.at("/estimateDetails/total");
+   assertEquals(totals.get("withReserve").decimalValue(),s.get("budgetWithReserve").decimalValue());
+   assertEquals(0,totals.get("max").decimalValue().multiply(new java.math.BigDecimal("1.25")).setScale(0,java.math.RoundingMode.HALF_UP).compareTo(s.get("budgetWithReserve").decimalValue()));
+   jdbc.update("update calculation_coefficients set coefficient_value=1.5 where code='reserve'");
+   assertEquals(s.get("budgetWithReserve"),call(path,null,200).get("budgetWithReserve"));
+  }finally{jdbc.update("update calculation_coefficients set coefficient_value=? where code='reserve'",previous);}
+ }
+
  @Test void projectListProgressAppearsOnlyAfterStartAndMatchesSchedule()throws Exception{
   String path=create();
   assertTrue(call("/api/projects",null,200).get(0).get("executionProgressPercent").isNull());
