@@ -49,6 +49,52 @@ class RefinementApiTest {
         do{state=call("GET",url,null,200);if(!state.get("calculationStatus").asText().equals("pending"))break;Thread.sleep(20);}while(System.nanoTime()<deadline);
         assertEquals("ready",state.get("calculationStatus").asText(),state.toString());return state;
     }
+    @Test void emptyRoomsRequireConfirmationAndRepeatedRequestCannotDuplicateLayout()throws Exception{
+        String url=create();JsonNode state=call("GET",url,null,200);
+        var removed=new ArrayList<String>();state.at("/data/rooms").forEach(r->removed.add(r.get("id").asText()));
+        long version=state.at("/project/version").asLong();
+        call("PUT",url+"/rooms",Map.of("version",version,"data",Map.of("rooms",List.of(),"roomCountManual",true),"confirmedRemovals",removed),400);
+        assertEquals(state.at("/data/rooms"),call("GET",url,null,200).at("/data/rooms"));
+        var body=Map.of("version",version,"data",Map.of("rooms",List.of(),"roomCountManual",true,"generateDefaultLayout",true),"confirmedRemovals",removed);
+        var saved=call("PUT",url+"/rooms",body,200);
+        var rooms=saved.at("/data/rooms");assertEquals(5,rooms.size());
+        assertEquals(2,java.util.stream.StreamSupport.stream(rooms.spliterator(),false).filter(r->r.get("type").asText().equals("living")).count());
+        for(String type:List.of("kitchen","combined_bathroom","corridor"))assertEquals(1,java.util.stream.StreamSupport.stream(rooms.spliterator(),false).filter(r->r.get("type").asText().equals(type)).count());
+        assertEquals(1,saved.at("/data/kitchens").size());
+        call("PUT",url+"/rooms",body,409);
+        assertEquals(rooms,call("GET",url,null,200).at("/data/rooms"));
+    }
+    @Test void clearedRoomNamesUseListOrderAndKeepIdsAcrossReopening()throws Exception{
+        String url=create();JsonNode state=call("GET",url,null,200);
+        ArrayNode rooms=state.at("/data/rooms").deepCopy();
+        ObjectNode first=(ObjectNode)java.util.stream.StreamSupport.stream(rooms.spliterator(),false).filter(r->r.get("type").asText().equals("combined_bathroom")).findFirst().orElseThrow();
+        String firstId=first.get("id").asText();first.put("name","Мой санузел");
+        ObjectNode second=first.deepCopy();String secondId=UUID.randomUUID().toString();second.put("id",secondId);second.put("name","Санузел 99");rooms.add(second);
+        state=save(url,state,"rooms",json.valueToTree(Map.of("rooms",rooms,"roomCountManual",true)));
+        rooms=state.at("/data/rooms").deepCopy();for(JsonNode r:rooms)if(r.get("id").asText().equals(firstId))((ObjectNode)r).put("name","");
+        state=save(url,state,"rooms",json.valueToTree(Map.of("rooms",rooms,"roomCountManual",true)));
+        state=call("GET",url,null,200);
+        for(JsonNode r:state.at("/data/rooms"))if(r.get("id").asText().equals(firstId))assertEquals("Совмещённый санузел 1",r.get("name").asText());
+        ArrayNode remaining=json.createArrayNode();for(JsonNode r:state.at("/data/rooms"))if(!r.get("id").asText().equals(firstId)){ObjectNode copy=r.deepCopy();if(r.get("id").asText().equals(secondId))copy.put("name","");remaining.add(copy);}
+        call("PUT",url+"/rooms",Map.of("version",state.at("/project/version").asLong(),"data",Map.of("rooms",remaining,"roomCountManual",true),"confirmedRemovals",List.of(firstId)),200);
+        for(JsonNode r:call("GET",url,null,200).at("/data/rooms"))if(r.get("id").asText().equals(secondId))assertEquals("Совмещённый санузел 1",r.get("name").asText());
+    }
+    @Test void ceilingHeightDefaultsAndInclusiveBoundsAndRedevelopmentPersist()throws Exception{
+        String url=create();JsonNode state=call("GET",url,null,200);
+        assertEquals(2.7,state.at("/data/apartment/ceilingHeight").asDouble());
+        for(double height:new double[]{1.99,10.01}){
+            ObjectNode a=state.at("/data/apartment").deepCopy();a.put("ceilingHeight",height);
+            JsonNode error=call("PUT",url+"/apartment",Map.of("version",state.at("/project/version").asLong(),"data",a),400);
+            assertTrue(error.get("message").asText().contains("от 2 до 10"));
+            assertEquals(2.7,call("GET",url,null,200).at("/data/apartment/ceilingHeight").asDouble());
+        }
+        for(int height:new int[]{2,10}){
+            ObjectNode a=state.at("/data/apartment").deepCopy();a.put("ceilingHeight",height);a.put("redevelopment",height==2);
+            state=save(url,state,"apartment",a);state=call("GET",url,null,200);
+            assertEquals(height,state.at("/data/apartment/ceilingHeight").asInt());
+            assertEquals(height==2,state.at("/data/apartment/redevelopment").asBoolean());
+        }
+    }
     @Test void legacyProjectKeepsItsBudgetAndCanExplicitlyUpgradeToUnitPricing()throws Exception{
         String url=create();String id=url.split("/")[3];
         jdbc.update("update projects set estimate_details_json=null, budget_min_rub=100000, budget_max_rub=200000 where project_id=?",UUID.fromString(id));
@@ -59,7 +105,7 @@ class RefinementApiTest {
         call("POST",url+"/calculate",Map.of("version",old.at("/project/version").asLong()),200);
         JsonNode candidate=ready(url);
         assertEquals(100000,candidate.at("/project/budgetMinRub").asInt());
-        assertEquals("catalog-pricing-7",candidate.at("/candidateEstimate/algorithmVersion").asText());
+        assertEquals("catalog-pricing-8",candidate.at("/candidateEstimate/algorithmVersion").asText());
         call("POST",url+"/apply",Map.of("version",candidate.at("/project/version").asLong(),"estimateId",candidate.at("/candidateEstimate/id").asText()),200);
         JsonNode reloaded=call("GET",url,null,200);
         assertEquals(candidate.get("candidateEstimate"),reloaded.get("activeEstimate"));

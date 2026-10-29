@@ -18,7 +18,7 @@ public class InitialRefinementData {
         add(rooms,p,"combined_bathroom","Санузел",Objects.requireNonNullElse(p.getBathroomsCount(),1));
         Map<UUID,Kitchen> kitchens=new LinkedHashMap<>();
         rooms.stream().filter(r->r.type().equals("kitchen")).forEach(r->kitchens.put(r.id(),Kitchen.defaults()));
-        Apartment a=new Apartment(p.getCurrentState(),p.getTargetState(),p.getFinishLevel(),p.getAreaM2(),null,"unknown","unknown","unknown","unknown","unknown","unknown","unknown","unknown",p.getRedevelopment());
+        Apartment a=new Apartment(p.getCurrentState(),p.getTargetState(),p.getFinishLevel(),p.getAreaM2(),new java.math.BigDecimal("2.7"),"unknown","unknown","unknown","unknown","unknown","unknown","unknown","unknown",p.getRedevelopment());
         return new RefinementData(a,List.copyOf(rooms),p.getRoomsCount()!=null,kitchens,new Exteriors("none",Exterior.defaults(),Exterior.defaults()),Set.of());
     }
     private void add(List<Room> rooms,Project p,String type,String label,int count){

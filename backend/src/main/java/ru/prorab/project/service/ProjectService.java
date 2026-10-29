@@ -75,11 +75,11 @@ public class ProjectService {
     public java.util.List<ProjectListResponse> list(UUID userId) {
         var projects=repository.findByOwnerIdOrderByUpdatedAtDesc(userId);
         var progress=executions.progressFor(projects.stream().filter(p->p.getStatus()!=ProjectStatus.DRAFT).map(Project::getProjectId).toList());
-        return projects.stream().map(p->new ProjectListResponse(mapper.toResponse(p),progress.get(p.getProjectId()))).toList();
+        return projects.stream().map(p->new ProjectListResponse(mapper.toResponse(p,progress.get(p.getProjectId())==null?"planning":progress.get(p.getProjectId())==100?"completed":"in_progress"),progress.get(p.getProjectId()))).toList();
     }
 
     @Transactional(readOnly = true)
-    public ProjectResponse get(UUID id) { return mapper.toResponse(find(id)); }
+    public ProjectResponse get(UUID id) { var p=find(id);return mapper.toResponse(p,executions.repairStatus(id)); }
 
     @Transactional
     public ProjectResponse saveStep(UUID id, int step, StepRequest request) {

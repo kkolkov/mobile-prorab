@@ -55,16 +55,15 @@ public class RefinementService {
             case "rooms"->{
                 RoomsInput input=convert(request.data(),RoomsInput.class);
                 if(input==null||input.rooms()==null)throw new BusinessException("Не переданы помещения");
+                if(input.rooms().isEmpty()&&!input.generateDefaultLayout())throw new BusinessException("Подтвердите создание базовой планировки");
+                if(!input.rooms().isEmpty()&&input.generateDefaultLayout())throw new BusinessException("Базовая планировка создаётся только для пустого списка");
                 Map<UUID,Room> prior=new HashMap<>();old.rooms().forEach(r->prior.put(r.id(),r));
                 rooms=new ArrayList<>();
                 for(Room r:input.rooms()){
                     if(r==null||r.id()==null||r.type()==null)throw new BusinessException("Укажите идентификатор и тип помещения");
                     String name=r.name()==null?"":r.name().trim();
                     if(name.isEmpty()) {
-                        UUID roomId=r.id();
-                        var peers=new ArrayList<Room>(input.rooms().stream().filter(x->x!=null&&x.id()!=null&&!x.id().equals(roomId)&&x.name()!=null&&!x.name().isBlank()).toList());
-                        peers.addAll(rooms);
-                        name=RoomNames.next(r.type(),peers);
+                        name=RoomNames.forRoom(r,input.rooms());
                     }
                     r=new Room(r.id(),r.type(),name,r.areaM2(),r.floor(),r.walls(),r.ceiling(),r.automatic());
                     Room before=prior.get(r.id());boolean automatic=before!=null&&before.automatic()&&sameRoom(before,r);
@@ -78,6 +77,13 @@ public class RefinementService {
                     boolean removed=rooms.stream().noneMatch(r->r.id().equals(before.id())&&r.type().equals(before.type()));
                     boolean equipped=before.type().equals("kitchen")&&!Objects.equals(kitchens.get(before.id()),Kitchen.defaults());
                     if(removed&&(!emptyAutomatic(before)||equipped)&&!confirmed.contains(before.id()))throw new BusinessException("Подтвердите удаление заполненного помещения и его оснащения");
+                }
+                if(input.generateDefaultLayout()){
+                    for(int i=1;i<=recommended(apartment.areaM2());i++)rooms.add(baseRoom(id,"living","Жилая комната",i));
+                    rooms.add(baseRoom(id,"kitchen","Кухня",1));
+                    rooms.add(baseRoom(id,"combined_bathroom","Совмещённый санузел",1));
+                    rooms.add(baseRoom(id,"corridor","Коридор",1));
+                    manual=false;
                 }
                 Set<UUID> kitchenIds=new HashSet<>();rooms.stream().filter(r->r.type().equals("kitchen")).forEach(r->kitchenIds.add(r.id()));
                 kitchens.keySet().retainAll(kitchenIds);kitchenIds.forEach(k->kitchens.putIfAbsent(k,Kitchen.defaults()));
@@ -196,6 +202,10 @@ public class RefinementService {
         int current=(int)rooms.stream().filter(r->r.type().equals("living")).count();
         while(current<count){rooms.add(room("living","Комната "+(++current)));}
         for(int i=rooms.size()-1;i>=0&&current>count;i--)if(rooms.get(i).type().equals("living")&&emptyAutomatic(rooms.get(i))){rooms.remove(i);current--;}
+    }
+    private Room baseRoom(UUID projectId,String type,String label,int number){
+        UUID id=UUID.nameUUIDFromBytes((projectId+":base-layout:"+type+":"+number).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return new Room(id,type,label+" "+number,null,"inherit","inherit","inherit",true);
     }
     private Room room(String type,String name){return new Room(UUID.randomUUID(),type,name,null,"inherit","inherit","inherit",true);}
     private JsonNode calculationInput(RefinementData d){ObjectNode tree=json.valueToTree(d);tree.remove(List.of("completedSections","updatedSections","roomCountManual"));((ArrayNode)tree.get("rooms")).forEach(r->((ObjectNode)r).remove(List.of("name","automatic")));return tree;}

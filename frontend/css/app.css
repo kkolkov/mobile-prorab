@@ -244,3 +244,18 @@ body:has(.project-grid) #app > .shell > .top { display:none; }
  .projects-heading #create-project { grid-column:1; grid-row:3; width:100%; }
 }
 @media(prefers-reduced-motion:reduce) { .account-chevron { transition:none; } }
+
+/* Preliminary estimate actions wrap without overflowing narrow screens. */
+.project-parameters { margin: 12px 0 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
+.estimate-actions { flex-wrap: wrap; }
+.estimate-actions .primary, .estimate-actions .secondary { flex: 1 1 240px; min-width: 0; white-space: normal; }
+
+.time-stage { border-top: 1px solid var(--line); padding-top: 12px; }
+.time-work-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.time-work-list li { padding: 12px; background: var(--card); border-radius: var(--radius); overflow-wrap: anywhere; }
+.time-work-list li div { margin-top: 4px; font-size: 14px; }
+
+.status-heading { display: flex; align-items: center; gap: 8px; }
+.status-heading h2 { margin: 8px 0; }
+.status-info { width: 44px; height: 44px; min-width: 44px; padding: 0; font-size: 22px; }
+.status-help { max-width: 38rem; margin: 8px 0 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }

@@ -68,14 +68,15 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     assert.deepEqual(await page.locator('fieldset legend').allTextContents(), ['Балкон','Лоджия']);
 
     await page.goto(base);await page.getByText('Продолжите ремонт или создайте новый проект.',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Действия: Проверка размещения',exact:true}).click();
     await page.getByRole('button',{name:'Переименовать: Проверка размещения',exact:true}).click();
     await page.getByLabel('Название проекта',{exact:true}).fill('Проверка обновления Render');
     await page.getByRole('button',{name:'Сохранить',exact:true}).click();
-    await page.getByRole('button',{name:'Переименовать: Проверка обновления Render',exact:true}).waitFor();
-    await page.reload();await page.getByRole('button',{name:'Переименовать: Проверка обновления Render',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Действия: Проверка обновления Render',exact:true}).waitFor();
+    await page.reload();await page.getByRole('button',{name:'Действия: Проверка обновления Render',exact:true}).waitFor();
     const saved=await page.evaluate(async()=>{const {token}=JSON.parse(localStorage.getItem('prorab.auth.v1'));return (await fetch('/api/projects',{headers:{Authorization:`Bearer ${token}`}})).json();});
     assert.equal(saved.length,1);assert.equal(saved[0].roomsCount,3);assert.equal(saved[0].kitchensCount,1);
-    assert.equal(saved[0].estimateDetails.algorithmVersion,'catalog-pricing-7');
+    assert.equal(saved[0].estimateDetails.algorithmVersion,'catalog-pricing-8');
     assert.equal(saved[0].estimateDetails.total.withReserve,Math.round(saved[0].estimateDetails.total.max*1.1));
     assert.equal(saved[0].budgetMinRub,saved[0].estimateDetails.total.min);
     assert.ok(apiOrigins.length > 0);

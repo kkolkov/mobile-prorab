@@ -93,8 +93,8 @@ export const Demo=()=> <Notice>Ориентировочная оценка. Це
 export const ErrorText=({message}:{message:string})=>message?<Text accessibilityRole="alert" style={styles.error}>{message}</Text>:null;
 export const Heading=({children}:React.PropsWithChildren)=><Text accessibilityRole="header" style={styles.h2}>{children}</Text>;
 export const Body=({children}:React.PropsWithChildren)=><Text style={styles.text}>{children}</Text>;
-export function Confirm({message,onConfirm,onCancel}: {message:string;onConfirm:()=>void;onCancel:()=>void}) {
+export function Confirm({message,onConfirm,onCancel,title="Подтвердите действие",confirmLabel="Подтвердить"}: {message:string;onConfirm:()=>void;onCancel:()=>void;title?:string;confirmLabel?:string}) {
   return <Modal visible transparent animationType="fade" onRequestClose={onCancel}><View style={styles.overlay}><SafeAreaView style={styles.sheet}>
-    <Heading>Подтвердите действие</Heading><Body>{message}</Body><Button label="Подтвердить" onPress={onConfirm}/><Button secondary label="Отмена" onPress={onCancel}/>
+    <Heading>{title}</Heading><Body>{message}</Body><Button label={confirmLabel} onPress={onConfirm}/><Button secondary label="Отмена" onPress={onCancel}/>
   </SafeAreaView></View></Modal>;
 }

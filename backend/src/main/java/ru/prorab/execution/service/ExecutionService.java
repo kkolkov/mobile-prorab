@@ -25,9 +25,16 @@ public class ExecutionService {
   Map<UUID,Integer> result=new HashMap<>();
   for(var record:executions.findAllById(ids)){
    var state=read(record.getStateJson(),ExecutionState.class);
-   if(state.startDate()!=null&&!state.tasks().isEmpty())result.put(record.getProjectId(),progress(state));
+   if(state.startDate()!=null&&!state.startDate().isAfter(LocalDate.now())&&!state.tasks().isEmpty())result.put(record.getProjectId(),progress(state));
   }
   return result;
+ }
+ public static String repairStatus(ExecutionState state,LocalDate today){
+  if(state.startDate()==null||state.startDate().isAfter(today)||state.tasks().isEmpty())return "planning";
+  return progress(state)==100?"completed":"in_progress";
+ }
+ @Transactional(readOnly=true) public String repairStatus(UUID id){
+  return executions.findById(id).map(record->repairStatus(read(record.getStateJson(),ExecutionState.class),LocalDate.now())).orElse("planning");
  }
  static int progress(ExecutionState state){return state.tasks().isEmpty()?0:(int)(100*state.tasks().stream().filter(t->t.status().equals("completed")).count()/state.tasks().size());}
  @Transactional public ExecutionResponse get(UUID id){var p=project(id);return response(p,prepare(p));}
@@ -115,7 +122,7 @@ public class ExecutionService {
  }
  private ExecutionResponse response(Project p,ProjectExecution record){
   var s=read(record.getStateJson(),ExecutionState.class);var latest=estimate(p);var b=s.budget();
-  BigDecimal plan=b==null?null:b.total().expected(),reserve=b==null?null:b.total().max().multiply(new BigDecimal("1.1")).setScale(0,RoundingMode.HALF_UP);
+  BigDecimal plan=b==null?null:b.total().expected(),reserve=b==null?null:b.total().withReserve();
   BigDecimal spent=s.expenses().stream().map(Expense::amount).reduce(BigDecimal.ZERO,BigDecimal::add);
   var categories=new ArrayList<ExecutionResponse.Category>();var details=b==null?null:b.details();
   String[] keys={"rough","finish","labor","extra"},names={"Черновые материалы","Чистовые материалы и оснащение","Работы","Дополнительные расходы"};

@@ -11,7 +11,7 @@ for(const mobile of [false,true])test(`Additional work ${mobile?'Expo':'Web'}: z
   const page=await browser.newPage({viewport:{width:390,height:844}});await installSession(page,account);const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const button=name=>page.getByRole('button',{name,exact:true});
   async function saveSection(section){const pending=page.waitForResponse(r=>r.url().endsWith('/refinement/'+section)&&r.request().method()==='PUT');await button('Продолжить').click();assert.equal((await pending).status(),200);await page.getByRole('heading',{name:'Уточнение параметров проекта',exact:true}).waitFor();}
-  async function select(label,value,text){if(mobile){await button(label).click();await button(text).click();}else await page.getByLabel(label,{exact:true}).selectOption(value);}
+  async function select(label,value,text){if(label==='Нужна перепланировка?'){if(mobile)await button(text).click();else await page.getByRole('radio',{name:text,exact:true}).check();return;}if(mobile){await button(label).click();await button(text).click();}else await page.getByLabel(label,{exact:true}).selectOption(value);}
   await page.goto(mobile?'http://localhost:8081/':'http://127.0.0.1:5500/#project='+p.projectId);
   if(mobile)await page.getByRole('button',{name:/^Ремонт квартиры 60 м²/}).click();
   assert.equal(await page.getByRole('button',{name:/Полностью обустроенная/}).count(),0);
@@ -22,7 +22,7 @@ for(const mobile of [false,true])test(`Additional work ${mobile?'Expo':'Web'}: z
   await page.getByRole('button',{name:/Бюджетный/}).click();await button('Получить оценку').click();await button('Перейти в проект').waitFor();
   p=await api(path);assert.equal(p.roomsCount,0);assert.equal(p.bathroomsCount,0);assert.equal(p.otherRoomsRepair,true);assert.equal(p.estimateStatus,'ready');
   await button('Удалить проект').click();await page.getByText(/Все детали по проекту будут удалены/).waitFor();await button('Нет').click();assert.equal((await api(path)).projectId,p.projectId);
-  await button('Уточнить расчёт').click();await page.getByRole('heading',{name:'Уточнение параметров проекта',exact:true}).waitFor();
+  await button('Детализировать параметры').click();await page.getByRole('heading',{name:'Уточнение параметров проекта',exact:true}).waitFor();
   const apartmentCard=()=>page.getByRole('button',{name:/^Параметры квартиры/});
   await apartmentCard().click();
   if(mobile){await button('Целевое состояние').click();assert.equal(await button('Полностью обустроенная').count(),0);await button('Закрыть').click();}
