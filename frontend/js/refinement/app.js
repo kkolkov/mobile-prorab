@@ -24,10 +24,10 @@ export async function openRefinement(app,project,onExit){
  const draft=()=>drafts.get(view);
  function open(key){if(busy)return;view=key;error='';conflict=false;if(!drafts.has(key)){
   let data=key==='rooms'?{rooms:copy(snapshot.data.rooms),roomCountManual:snapshot.data.roomCountManual}:copy(snapshot.data[key==='kitchen'?'kitchens':key]);
-  if(key==='apartment'){data.redevelopment??=snapshot.project.redevelopment??false;data.ceilingHeight??='2,7';}
+  if(key==='apartment')data.redevelopment??=snapshot.project.redevelopment??false;
   drafts.set(key,{data,version:snapshot.project.version,confirmedRemovals:[]});
  }if(key==='kitchen')kitchenId=Object.keys(draft().data)[0]??null;emit('refinement_section_opened',key);render();}
- function shell(body){app.innerHTML=`<div class="shell refinement"><div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><button class="secondary" data-action="exit">В проект</button></div><p>${esc(snapshot?.project.name||project.name)}</p>${body}<div role="alert" class="error">${esc(error)}</div>${conflict?'<div class="notice">Данные изменены в другом сеансе. Ваш ввод сохранён в форме.<button data-action="refresh-conflict">Загрузить актуальные данные, сохранив мой ввод</button></div>':''}</div>`;bind();}
+ function shell(body){app.innerHTML=`<div class="shell refinement"><div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><button class="secondary" data-action="exit">В проект</button></div><p>${esc(snapshot?.project.name||project.name)}</p><div class="notice demo">Ориентировочный расчёт. Цены и допущения — в составе оценки. Объёмы без обмеров определяются по допущениям.</div>${body}<div role="alert" class="error">${esc(error)}</div>${conflict?'<div class="notice">Данные изменены в другом сеансе. Ваш ввод сохранён в форме.<button data-action="refresh-conflict">Загрузить актуальные данные, сохранив мой ввод</button></div>':''}</div>`;bind();}
  function render(){
   clearTimeout(timer);if(closed)return;
   if(!snapshot){shell('<p>Загружаем проект…</p>');return;}
@@ -63,7 +63,7 @@ export async function openRefinement(app,project,onExit){
   app.querySelectorAll('[data-room]').forEach(b=>b.onclick=()=>{roomEditor=copy(draft().data.rooms.find(r=>r.id===b.dataset.room));render();});
   app.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removeRoom(b.dataset.remove));
   app.querySelectorAll('[data-field]').forEach(field=>field.addEventListener(field.tagName==='SELECT'||field.type==='checkbox'?'change':'input',()=>{
-   if(busy||(field.type==='radio'&&!field.checked))return;const key=field.dataset.field;
+   if(busy)return;const key=field.dataset.field;
    if(key==='selectedKitchen'){kitchenId=field.value;render();return;}
    let target=roomEditor??(view==='kitchen'?draft().data[kitchenId]:draft().data);
    if(key==='redevelopment'){target.redevelopment=field.value==='true';return;}
@@ -99,22 +99,9 @@ export async function openRefinement(app,project,onExit){
    }catch(e){error=e.message;emit('refinement_'+name+'_failed');if(e.status===409){snapshot=await request();error+=' Актуальная версия загружена. Проверьте расчёт перед повтором.';}}finally{busy=false;}render();
   }
  }
- function confirmEmptyRooms(){
-  if(document.querySelector('#empty-rooms-confirm'))return;
-  const dialog=document.createElement('dialog');dialog.id='empty-rooms-confirm';dialog.setAttribute('aria-labelledby','empty-rooms-title');
-  dialog.innerHTML='<h2 id="empty-rooms-title">Вы не указали ни одного помещения</h2><p>Если вы продолжите, калькулятор автоматически рассчитает базовую планировку (жилые комнаты, кухню, санузел и коридор) по вашей площади. Параметры можно будет добавить позднее</p><div class="actions"><button type="button" class="secondary" data-cancel>Отмена</button><button type="button" class="primary" data-confirm>Подтвердить и продолжить</button></div>';
-  const close=()=>{dialog.close();dialog.remove();};
-  dialog.querySelector('[data-cancel]').onclick=close;
-  dialog.oncancel=e=>{e.preventDefault();close();};
-  let confirmed=false;
-  dialog.querySelector('[data-confirm]').onclick=()=>{if(confirmed||busy)return;confirmed=true;close();void save(true);};
-  document.body.append(dialog);dialog.showModal();dialog.querySelector('[data-cancel]').focus();
- }
- async function save(generateDefaultLayout=false){
-  if(busy)return;
-  if(view==='rooms'&&!draft().data.rooms.length&&!generateDefaultLayout){confirmEmptyRooms();return;}
+ async function save(){
   const key=view,d=draft();busy=true;error='';conflict=false;render();
-  try{const previousData=JSON.stringify(snapshot.data),previousSections=snapshot.data.completedSections;const result=await request('/'+key,{version:d.version,data:parseDraft(generateDefaultLayout?{...d.data,generateDefaultLayout:true}:d.data),confirmedRemovals:d.confirmedRemovals},'PUT');snapshot=result;drafts.delete(key);if(JSON.stringify(result.data)!==previousData)emit('refinement_section_saved',key);if(!previousSections.includes(key)&&result.data.completedSections.includes(key))emit('refinement_section_first_saved',key);view='menu';}
+  try{const previousData=JSON.stringify(snapshot.data),previousSections=snapshot.data.completedSections;const result=await request('/'+key,{version:d.version,data:parseDraft(d.data),confirmedRemovals:d.confirmedRemovals},'PUT');snapshot=result;drafts.delete(key);if(JSON.stringify(result.data)!==previousData)emit('refinement_section_saved',key);if(!previousSections.includes(key)&&result.data.completedSections.includes(key))emit('refinement_section_first_saved',key);view='menu';}
   catch(e){error=e.message;conflict=e.status===409;emit('refinement_save_failed',key);}finally{busy=false;}render();
  }
  async function poll(){try{const fresh=await request();if(fresh.project.version>=snapshot.project.version&&fresh.revision>=snapshot.revision)snapshot=fresh;if(snapshot.calculationStatus==='ready')emit('refinement_estimate_received');}catch(e){error=e.message;}if(view==='menu'&&!closed)render();}
@@ -122,8 +109,8 @@ export async function openRefinement(app,project,onExit){
   const old=snapshot.activeEstimate,next=snapshot.candidateEstimate;
   if(!next){view='menu';render();return;}
   function row(label,a,b){return `<tr><th>${label}</th><td>${a==null?'Нет данных':rub(a)}</td><td>${rub(b)}</td><td>${a==null?'—':rub(b-a)}</td></tr>`;}
-  function group(label,a,b){return `<h2>${label}</h2><div class="table-scroll"><table><thead><tr><th>Показатель</th><th>Текущая</th><th>Уточнённая</th><th>Разница</th></tr></thead><tbody>${row('Минимум',a?.min,b.min)}${row('Максимум',a?.max,b.max)}${row('Расчётная стоимость',a?.expected,b.expected)}${row('Бюджет с резервом',a?.withReserve??(a?Math.round(a.max*1.1):null),b.withReserve??Math.round(b.max*1.1))}</tbody></table></div>`;}
-  shell(`<h1>Сравнение сметы</h1><p>Бюджет с резервом включает запас сверх максимума по настройкам на момент расчёта. В каждой колонке показаны сохранённые значения своей сметы. Сохранённая смета изменится только после применения расчёта.</p>${group('Общая сумма',old?.total,next.total)}${group('Ремонт',old?.repair,next.repair)}${group('Кухня и техника',old?.kitchen,next.kitchen)}${estimateDetails(next)}<p>В составе ремонта: балкон ${rub(next.balconyIncluded)}, лоджия ${rub(next.loggiaIncluded)}. Повторно к итогу не прибавляются.</p><p>Новый расчёт включает ориентировочный срок по этапам. Он применяется вместе со сметой; начатый график сохраняет фактический ход работ.</p><h2>Причины изменения</h2><ul>${next.reasons.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${old&&(old.pricingVersion!==next.pricingVersion||old.algorithmVersion!==next.algorithmVersion)?'<p>Изменилась версия цен или алгоритма.</p>':''}<h2>Допущения</h2><ul>${[...(old?.assumptions??[]),...next.assumptions].map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="actions"><button class="primary" data-action="apply" ${busy?'disabled':''}>${busy?'Применение…':'Применить расчёт'}</button><button class="secondary" data-action="menu">Уточнить ещё</button></div><button class="secondary" data-action="exit">Вернуться в проект</button>`);
+  function group(label,a,b){return `<h2>${label}</h2><div class="table-scroll"><table><thead><tr><th>Показатель</th><th>Текущая</th><th>Уточнённая</th><th>Разница</th></tr></thead><tbody>${row('Минимум',a?.min,b.min)}${row('Максимум',a?.max,b.max)}${row('Расчётная стоимость',a?.expected,b.expected)}${row('Бюджет с резервом',a?Math.round(a.max*1.1):null,Math.round(b.max*1.1))}</tbody></table></div>`;}
+  shell(`<h1>Сравнение сметы</h1><p>Бюджет с резервом — максимум + 10% на непредвиденные расходы. Это правило применяется к обеим колонкам, включая старые оценки. Сохранённая смета изменится только после применения расчёта.</p>${group('Общая сумма',old?.total,next.total)}${group('Ремонт',old?.repair,next.repair)}${group('Кухня и техника',old?.kitchen,next.kitchen)}${estimateDetails(next)}<p>В составе ремонта: балкон ${rub(next.balconyIncluded)}, лоджия ${rub(next.loggiaIncluded)}. Повторно к итогу не прибавляются.</p><p>Новый расчёт включает ориентировочный срок по этапам. Он применяется вместе со сметой; начатый график сохраняет фактический ход работ.</p><h2>Причины изменения</h2><ul>${next.reasons.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>${old&&(old.pricingVersion!==next.pricingVersion||old.algorithmVersion!==next.algorithmVersion)?'<p>Изменилась версия цен или алгоритма.</p>':''}<h2>Допущения</h2><ul>${[...(old?.assumptions??[]),...next.assumptions].map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="actions"><button class="primary" data-action="apply" ${busy?'disabled':''}>${busy?'Применение…':'Применить расчёт'}</button><button class="secondary" data-action="menu">Уточнить ещё</button></div><button class="secondary" data-action="exit">Вернуться в проект</button>`);
  }
  try{render();snapshot=await request();emit('refinement_opened');render();}catch(e){error=e.message;shell('<h1>Не удалось открыть уточнение</h1><button data-action="exit">Вернуться в проект</button>');}
 }

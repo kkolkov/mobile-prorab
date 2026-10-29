@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 test('CP-01 starts; AC-01/02 area controls Continue; AC-03 preserves custom name', async () => {
-  const elements = new Map(['#app', '#area', '#name', '#primary', '#back'].map(id => [id, {value: ''}]));
+  const elements = new Map(['#app', '#address', '#area', '#name', '#primary', '#back'].map(id => [id, {value: ''}]));
   const originalWindow = globalThis.window;
   const originalDocument = globalThis.document;
   const originalFetch = globalThis.fetch;
@@ -14,7 +14,6 @@ test('CP-01 starts; AC-01/02 area controls Continue; AC-03 preserves custom name
     (await import('../js/app.js')).render();
     const html = elements.get('#app').innerHTML;
     assert.match(html, /Об объекте/);
-    assert.doesNotMatch(html, /id="address"|Адрес/);
     assert.match(html, /<a class="brand" href="\/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб<\/a>/);
     assert.match(html, /Шаг 1 из 5/);
     assert.match(html, /id="primary" disabled/);

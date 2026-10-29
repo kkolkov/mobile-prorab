@@ -14,7 +14,7 @@ for(const width of [1280,390])test(`Imported price catalog: search, source and r
   await page.locator('tbody details').first().locator('summary').click();
   await page.getByText('Среднее арифметическое по 16 городам',{exact:false}).first().waitFor();
   await page.locator('[data-edit="average.work.laminate"]').click();
-  assert.equal(await page.locator('#unitPriceRub').inputValue(),'1090.00');
+  assert.equal(await page.locator('#unitPriceRub').inputValue(),'341.88');
   await page.locator('#unitPriceRub').fill('399');
   await page.route('**/api/porabadmin/prices/average.work.laminate',r=>r.fulfill({status:409,contentType:'application/json',body:'{"message":"Конфликт версии"}'}));
   await page.locator('#save').click();

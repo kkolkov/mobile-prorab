@@ -4,7 +4,6 @@ export interface Project {
   updatedAt?: string | null;
   estimateDetails?: Estimate | null;
   projectId: string; status: 'draft' | 'active'; completedStep: number;
-  repairStatus?: 'planning' | 'in_progress' | 'completed';
   name: string; nameSource: 'auto' | 'user'; areaM2: number; address: string | null;
   currentState: string | null; targetState: string | null; finishLevel: string | null;
   otherRoomsRepair: boolean; roomsCount: number | null; kitchensCount: number; bathroomsCount: number; redevelopment: boolean;
@@ -47,7 +46,7 @@ export interface CostDetails {
  lines: {section:string;name:string;priceCode:string;unit:string;quantity:number;unitPriceRub:number;coefficient:number;amountRub:number;source:string;priceDate:string}[];
 }
 export interface Estimate {
-  timePlan?: {version:string;totalDays:number;phases:{id:string;title:string;durationDays:number;dependencies:string[]}[];workloads?:{code:string;title:string;phase?:string;quantityM2:number;personHoursPer100m2:number;personHours:number;source:string;sourceDate:string}[];assumptions?:string[]} | null;
+  timePlan?: {version:string;totalDays:number;phases:{id:string;title:string;durationDays:number;dependencies:string[]}[];workloads?:{code:string;title:string;quantityM2:number;personHoursPer100m2:number;personHours:number;source:string;sourceDate:string}[];assumptions?:string[]} | null;
   details?: CostDetails | null;
   id: string; total: Totals; repair: Totals | null; kitchen: Totals | null;
   balconyIncluded: number; loggiaIncluded: number; reasons: string[]; assumptions: string[];

@@ -1,9 +1,7 @@
 import type {Room} from '../core/types';
 export function roomName(room:Room,rooms:Room[],labels:Record<string,string>){
  if(room.name.trim())return room.name.trim();
- const ordered=rooms.some(r=>r.id===room.id)?rooms.map(r=>r.id===room.id?room:r):[...rooms,room];
- const peers=ordered.filter(r=>r.type===room.type);
- const index=peers.findIndex(r=>r.id===room.id);
- const number=index<0?peers.length+1:index+1;
- return `${labels[room.type]} ${number}`;
+ const peers=rooms.filter(r=>r.id!==room.id&&r.type===room.type);
+ let n=peers.reduce((max,r)=>Math.max(max,Number(r.name.match(/ (\d+)$/)?.[1]??0)),peers.length)+1;
+ return `${labels[room.type]} ${n}`;
 }

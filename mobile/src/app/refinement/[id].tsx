@@ -10,7 +10,7 @@ import { draftsFor } from '../../core/session';
 import { amount, clone, emptyRoom, parseNumbers } from '../../core/rules';
 import { emit } from '../../core/analytics';
 import type { Draft, Room, Section, SectionData, Snapshot } from '../../core/types';
-import { Screen, Button, Card, Select, Body, ErrorText, Notice, Confirm } from '../../components/ui';
+import { Screen, Button, Card, Select, Body, Demo, ErrorText, Notice, Confirm } from '../../components/ui';
 import { ApartmentForm, ExteriorsForm, KitchenForm, RoomForm, roomError, sectionError } from '../../refinement/forms';
 import { Comparison } from '../../refinement/Comparison';
 
@@ -25,7 +25,7 @@ export default function Refinement() {
   const view=routeView&&(['menu','compare',...Object.keys(sections)].includes(routeView))?routeView:'menu';
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[conflict,setConflict]=useState(false);
   const [room,setRoom]=useState<Room|null>(null),[kitchenId,setKitchenId]=useState(''),[,redraw]=useState(0);
-  const [confirmation,setConfirmation]=useState<{message:string;action:()=>void;title?:string;confirmLabel?:string}|null>(null);
+  const [confirmation,setConfirmation]=useState<{message:string;action:()=>void}|null>(null);
   const lock=useRef(false),drafts=draftsFor(id);
   const setView=(next:string)=>{setError('');setConflict(false);router.setParams({view:next});};
   const load=useCallback(async()=>{
@@ -51,7 +51,7 @@ export default function Refinement() {
   function open<K extends Section>(key:K) {
     if(!snapshot)return;
     if(!drafts[key]) {
-      const sectionsData:SectionData={apartment:{...snapshot.data.apartment,ceilingHeight:snapshot.data.apartment.ceilingHeight??'2,7',redevelopment:snapshot.data.apartment.redevelopment??snapshot.project.redevelopment},rooms:{rooms:snapshot.data.rooms,roomCountManual:snapshot.data.roomCountManual},kitchen:snapshot.data.kitchens,exteriors:snapshot.data.exteriors};
+      const sectionsData:SectionData={apartment:{...snapshot.data.apartment,redevelopment:snapshot.data.apartment.redevelopment??snapshot.project.redevelopment},rooms:{rooms:snapshot.data.rooms,roomCountManual:snapshot.data.roomCountManual},kitchen:snapshot.data.kitchens,exteriors:snapshot.data.exteriors};
       const draft:Draft<K>={data:clone(sectionsData[key]),version:snapshot.project.version,confirmedRemovals:[]};
       // Key and value are paired here; retain their association in the session map.
       Object.assign(drafts,{[key]:draft});
@@ -80,15 +80,11 @@ export default function Refinement() {
     };
     if(before?.type==='kitchen'&&edited.type!=='kitchen')setConfirmation({message:'Смена типа удалит оснащение кухни. Продолжить?',action:()=>{d.confirmedRemovals.push(before.id);done();}});else done();
   }
-  async function save(generateDefaultLayout=false) {
-    if(lock.current)return;
+  async function save() {
     const key=view as Section,d=drafts[key];if(!d||!snapshot)return;
-    if(key==='rooms'&&!drafts.rooms!.data.rooms.length&&!generateDefaultLayout){
-      setConfirmation({title:'Вы не указали ни одного помещения',message:'Если вы продолжите, калькулятор автоматически рассчитает базовую планировку (жилые комнаты, кухню, санузел и коридор) по вашей площади. Параметры можно будет добавить позднее',confirmLabel:'Подтвердить и продолжить',action:()=>void save(true)});return;
-    }
     const invalid=sectionError(key,d.data);if(invalid){setError(invalid);return;}
     await run(async()=>{
-      const result=await api.save(id,key,{...d,data:parseNumbers(generateDefaultLayout?{...d.data,generateDefaultLayout:true}:d.data)});
+      const result=await api.save(id,key,{...d,data:parseNumbers(d.data)});
       if(JSON.stringify(result.data)!==JSON.stringify(snapshot.data))emit({name:'refinement_section_saved',projectId:id,section:key});
       if(!snapshot.data.completedSections.includes(key)&&result.data.completedSections.includes(key))emit({name:'refinement_section_first_saved',projectId:id,section:key});
       setSnapshot(result);delete drafts[key];setView('menu');
@@ -106,6 +102,7 @@ export default function Refinement() {
   const d=section?drafts[section]:undefined;
   const title=room?'Карточка помещения':view==='compare'?'Сравнение сметы':section?sections[section][0]:'Уточнение параметров проекта';
   return <Screen key={`${view}-${room?.id??''}`} title={title} subtitle={snapshot?.project.name} back={back} busy={busy}>
+    <Demo/>
     {!snapshot&&<><Body>Загружаем параметры проекта…</Body>{!!error&&<Button label="Повторить загрузку" onPress={load}/>}</>}
     {snapshot&&view==='menu'&&<>
       <Body>Выберите, какие данные хотите уточнить</Body>
@@ -137,9 +134,9 @@ export default function Refinement() {
     </>:<><Body>Актуальный расчёт пока не готов.</Body><Button label="К разделам" onPress={()=>setView('menu')}/></>)}
     <ErrorText message={error}/>
     {conflict&&<><Notice>Данные изменены в другом сеансе. Ваш ввод сохранён в форме.</Notice><Button secondary label="Загрузить актуальную версию, сохранив мой ввод" onPress={refreshConflict} disabled={busy}/></>}
-    {section&&d&&<Button label={room?'Готово':busy?'Сохранение…':'Продолжить'} onPress={room?doneRoom:()=>void save()} busy={busy} disabled={conflict}/>}
+    {section&&d&&<Button label={room?'Готово':busy?'Сохранение…':'Продолжить'} onPress={room?doneRoom:save} busy={busy} disabled={conflict}/>}
     {!!error&&!conflict&&view==='menu'&&<Button secondary label="Обновить состояние расчёта" onPress={load} disabled={busy}/>}
     <Button secondary label="Вернуться в проект" onPress={exit} disabled={busy}/>
-    {confirmation&&<Confirm title={confirmation.title} confirmLabel={confirmation.confirmLabel} message={confirmation.message} onCancel={()=>setConfirmation(null)} onConfirm={()=>{confirmation.action();setConfirmation(null);}}/>}
+    {confirmation&&<Confirm message={confirmation.message} onCancel={()=>setConfirmation(null)} onConfirm={()=>{confirmation.action();setConfirmation(null);}}/>}
   </Screen>;
 }

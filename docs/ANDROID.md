@@ -106,18 +106,3 @@ EAS 769e97a0-2cf8-4bd5-bdd6-e0110e8177f4, готова 28.10.2026 19:34 UTC.
 ZIP без повреждений, apksigner verify успешен, сертификат совпадает с №5/7;
 ru.prorab.mobile, versionCode8, minSdk24, INTERNET, публичный API и маршрут
 /auth/password в bundle подтверждены. Физическое устройство не проверено.
-
-
-## Релиз 6fe8b90 / APK №9 — 29.10.2026
-
-Веб опубликован: /porabadmin/guide.html совпадает с локальной версией.
-Публичный API smoke прошёл: создание, пересчёт, применение, финансы и график.
-Frontend 20/20, mobile 15/15, typecheck и lint прошли.
-APK: https://expo.dev/artifacts/eas/ALY_776QqKueKc4tSeSlI5NWLG5pkUapMs48z0xK2No.apk
-EAS a394a9cf-812e-418a-82bf-784faa876b8f; локально mobile/build/android/mobile-prorab-1.0.0-build9.apk.
-ZIP и apksigner проверены; сертификат совпадает с №8, versionCode 9, minSdk24,
-публичный HTTPS API подтверждён. На физическом Android установка не проверялась.
-
-## Подготовка APK №10 — 29.10.2026
-
-versionCode 10, production API Render. Включает обновления мастера/уточнения, компактную детализацию, новые цены и сохранённый резерв из расчёта. Админка коэффициентов — на сервере; её изменения применяются к следующему расчёту. Статус сборки и ссылка добавляются после EAS.

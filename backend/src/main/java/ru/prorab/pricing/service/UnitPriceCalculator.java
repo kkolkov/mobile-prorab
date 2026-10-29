@@ -16,23 +16,22 @@ import java.util.*;
 /** Unit pricing MVP. Prices and composition shares are provisional; geometry assumptions are explicit. */
 @Component
 public class UnitPriceCalculator implements RefinementCalculator {
-    public static final String VERSION="catalog-pricing-8";
+    public static final String VERSION="catalog-pricing-7";
     private final PriceCatalog catalog;
-    private final CoefficientCatalog coefficients;
     private final ru.prorab.execution.service.TimePlanner timePlanner;
-    public UnitPriceCalculator(PriceCatalog catalog,ru.prorab.execution.service.TimePlanner timePlanner,CoefficientCatalog coefficients){this.coefficients=coefficients;this.catalog=catalog;this.timePlanner=timePlanner;}
+    public UnitPriceCalculator(PriceCatalog catalog,ru.prorab.execution.service.TimePlanner timePlanner){this.catalog=catalog;this.timePlanner=timePlanner;}
     public RefinedEstimate calculate(UUID id,long revision,RefinementData d,AreaAllocation allocation){
         if(!allocation.complete())throw new IllegalArgumentException("Incomplete area allocation");
         Apartment a=d.apartment();
-        Ledger bill=new Ledger(catalog.snapshot(),a.finishLevel(),coefficients.snapshot());
+        Ledger bill=new Ledger(catalog.snapshot(),a.finishLevel());
         List<String> notes=new ArrayList<>(allocation.assumptions());
-        notes.add("Цены отделки — отдельно работа и материалы. Сопоставимые работы обновлены по Сбор_данных_для_калькулятора.xlsx (прайсы Лемана ПРО, Москва); остальные ставки сохранены. Выбор города не используется.");
-        notes.add("Источник каждой ставки сохранён в строке сметы. Часть материалов и работ использует прежние нормативные ориентиры по 16 городам. Цены нового файла — отдельные предложения, не новая среднерыночная выборка; дата из файла не означает автоматическую онлайн-проверку.");
-        notes.add("Для городских материалов без цен по классам сохранён оценочный множитель: значения классов берутся из настроек админки и сохранены ниже. Работы идут без множителя. Комплекты дверей, кухни и техника уже выбраны по классу: повторного множителя нет.");
-        notes.add("Нет обмеров периметра и проёмов: помещение условно квадратное; стены = 4 × √площадь × высота × доля стен из настроек. Высота без ввода — 2,7 м. Доля частичных работ берётся из настроек.");
+        notes.add("Цены отделки — среднее арифметическое по 16 городам: отдельно работа и материалы. Выбор города не используется.");
+        notes.add("Работы и материалы отделки — отдельные ставки из городского справочника 28.10.2026. Это нормативные ориентиры, не предложения бригады. В источниках строк сохранены городские значения и пояснения состава; исходные диапазоны — в предоставленном Excel.");
+        notes.add("Для городских материалов без цен по классам сохранён оценочный множитель: Бюджет ×1, Комфорт ×1,3, Бизнес/Премиум ×1,7. Работы идут без множителя. Комплекты дверей, кухни и техника уже выбраны по классу: повторного множителя нет.");
+        notes.add("Нет обмеров периметра и проёмов: помещение условно квадратное; стены = 4 × √площадь × высота × 0,85. Проёмы — 15%. Высота без ввода — 2,7 м. Частичные работы — 50% объёма.");
         notes.add("Неизвестная отделка: ламинат, обои, натяжной потолок; санузлы: плитка на полу и стенах. Демонтаж без данных о прежнем покрытии: обои, ламинат, натяжной потолок. Новое покрытие не определяет старое.");
-        notes.add("Электрика и сантехника: материалы и монтаж по сводному справочнику. Число розеток сохранено: округление площади / 4 вверх; частичные работы — доля объёма из настроек. Кабель розеток условно 2 м на м², штробы — 40% кабеля (правила сводного файла). Щит, выделенные линии приборов и замена вводного узла воды отдельно не включены без выбора этих работ.");
-        notes.add("Границы бюджета и резерв сверх максимума определяются коэффициентами из настроек. Сроки и технологические паузы остаются предварительными. Доставка, вывоз мусора и перепланировка отдельно не оценены.");
+        notes.add("Электрика и сантехника: материалы и монтаж по сводному справочнику. Число розеток сохранено: округление площади / 4 вверх; частичные работы — половина объёма. Кабель розеток условно 2 м на м², штробы — 40% кабеля (правила сводного файла). Щит, выделенные линии приборов и замена вводного узла воды отдельно не включены без выбора этих работ.");
+        notes.add("Диапазон −10%/+15%, резерв 10% сверх максимума — допущения модели. Сроки и технологические паузы остаются предварительными. Доставка, вывоз мусора и перепланировка отдельно не оценены.");
         BigDecimal height=a.ceilingHeight()==null?n("2.7"):a.ceilingHeight();
         Map<UUID,Room> rooms=new HashMap<>();d.rooms().forEach(r->rooms.put(r.id(),r));
         for(var area:allocation.areas()){
@@ -43,20 +42,20 @@ public class UnitPriceCalculator implements RefinementCalculator {
             String walls=effective(r==null?"inherit":r.walls(),wet?"tile":shared?a.walls():"unknown");
             if(wet&&walls.equals("unknown"))walls="tile";
             String ceiling=effective(r==null?"inherit":r.ceiling(),wet?"stretch":shared?a.ceiling():"unknown");
-            BigDecimal surface=walls(area.areaM2(),height,bill.coefficients);
+            BigDecimal surface=walls(area.areaM2(),height);
             bill.finish("repair",label+": пол","floor",floor,area.areaM2());
             bill.finish("repair",label+": стены","wall",walls,surface);
             bill.finish("repair",label+": потолок","ceiling",ceiling,area.areaM2());
-            BigDecimal prepare=switch(a.currentState()){case WHITE_BOX->BigDecimal.ZERO;case LIVED_IN->bill.coefficients.get("lived_share");default->BigDecimal.ONE;};
-            bill.operation("repair",label+": подготовка стен","plaster_wall",surface.multiply(work(a.wallPreparation(),prepare,"ready",bill.coefficients)),false);
-            bill.operation("repair",label+": подготовка пола","screed",area.areaM2().multiply(work(a.floorPreparation(),prepare,"ready",bill.coefficients)),false);
-            BigDecimal demolish=switch(a.currentState()){case OLD_FINISH->BigDecimal.ONE;case LIVED_IN->bill.coefficients.get("lived_share");default->BigDecimal.ZERO;};
-            BigDecimal demo=work(a.demolition(),demolish,"none",bill.coefficients);
+            BigDecimal prepare=switch(a.currentState()){case WHITE_BOX->BigDecimal.ZERO;case LIVED_IN->n("0.5");default->BigDecimal.ONE;};
+            bill.operation("repair",label+": подготовка стен","plaster_wall",surface.multiply(work(a.wallPreparation(),prepare,"ready")),false);
+            bill.operation("repair",label+": подготовка пола","screed",area.areaM2().multiply(work(a.floorPreparation(),prepare,"ready")),false);
+            BigDecimal demolish=switch(a.currentState()){case OLD_FINISH->BigDecimal.ONE;case LIVED_IN->n("0.5");default->BigDecimal.ZERO;};
+            BigDecimal demo=work(a.demolition(),demolish,"none");
             bill.reference("repair",label+": демонтаж стен","L_demo_paper",surface.multiply(demo));
             bill.reference("repair",label+": демонтаж пола","L_demo_floor",area.areaM2().multiply(demo));
             bill.reference("repair",label+": демонтаж потолка","L_demo_c_stretch",area.areaM2().multiply(demo));
             BigDecimal electric=switch(a.currentState()){case WHITE_BOX,LIVED_IN->BigDecimal.ZERO;default->BigDecimal.ONE;};
-            BigDecimal electricalShare=work(a.electrical(),electric,"keep",bill.coefficients);
+            BigDecimal electricalShare=work(a.electrical(),electric,"keep");
             bill.electrical("repair",label,area.areaM2().divide(n("4"),0,RoundingMode.CEILING).multiply(electricalShare),area.areaM2().multiply(n("2")).multiply(electricalShare),wet,false);
             bill.plumbing(label,area.type(),a.areaM2(),a.targetState()!=TargetState.FINISH_ONLY,bundledKitchen(d.kitchens().get(area.id()),a.targetState()!=TargetState.FINISH_ONLY));
             if(wet||area.type().equals("living")){
@@ -76,7 +75,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
                     bill.direct("kitchen",label+": сборка гарнитура — от, другой подрядчик","spb.kitchen.assembly",length,BigDecimal.ONE);
                     notes.add(label+": комплект СПб с фасадами "+(k.facade().equals("plastic")?"пластик":"эмаль")+" включает мойку, смеситель и обычную столешницу. Мойка со смесителем повторно не начислена; их подключение и сифон отдельно. Сборка — стартовая ставка другого подрядчика. Цена типового комплекта пересчитана линейно по длине, класс повторно не умножается.");
                 }else if(custom){
-                    bill.add("kitchen",label+": гарнитур с выбранными фасадами/столешницей (укрупнённая оценка)","joinery",length.divide(n("3"),8,RoundingMode.HALF_UP),material(k.facade(),bill.coefficients).multiply(material(k.countertop(),bill.coefficients)));
+                    bill.add("kitchen",label+": гарнитур с выбранными фасадами/столешницей (укрупнённая оценка)","joinery",length.divide(n("3"),8,RoundingMode.HALF_UP),material(k.facade()).multiply(material(k.countertop())));
                     notes.add(label+": для каменной столешницы есть отдельный прайс, но цена обычной столешницы внутри гарнитура не выделена. Поэтому сохранена прежняя укрупнённая оценка гарнитура с монтажом; комплект с постформингом и камень сверху не начисляются.");
                 }else{
                     // Imported cabinets are sold in 0.01 of a 3 m kit, not at the full kit price.
@@ -95,7 +94,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         }
         notes.add("Сантехника: совмещённый санузел — раковина, ванна и унитаз; ванная — раковина и ванна; туалет — унитаз; кухня — мойка. При цели «Только отделка» учитываются только трубы и выводы, без приборов и их монтажа; прежний множитель 0,35 не используется. Длины трасс оценены по правилам сводного файла с масштабом √(площадь квартиры / 60), а не по обмерам. Дополнительная техника и её трассы не добавляются автоматически.");
         notes.add("Остекление, утепление и кухни пластик/эмаль с обычной столешницей — прайсы СПб с источниками и датами; город в приложении не выбирается. Отдельная плита, кухня с каменной столешницей и основная мебель сохраняют прежние ставки. Стартовые цены «от» не являются фиксированным предложением на этот объект.");
-        notes.add("Кухонная техника — отдельные цены по классу. Монтаж панели, духовки, вытяжки, холодильника и посудомойки рассчитан по отдельным ставкам из Excel. Отдельно стоящая плита сохраняет прежнюю оценочную ставку и включает духовку.");
+        notes.add("Кухонная техника — отдельные цены по классу. Монтаж каждого прибора оценён как 1/6 ставки установки шести приборов: состав операций отличается, требуется проверка подрядчиком. Отдельно стоящая плита сохраняет прежнюю оценочную ставку и включает духовку.");
         notes.add("Натяжной потолок: полотно отдельно; профиль и крепёж включены в комплекс монтажа. Комплексные услуги (в том числе остекление и утепление) отнесены к работам/услугам вместе с включёнными материалами: раздельная стоимость поставщиком не раскрыта. Пакетные материалы округляются после объединения потребности по проекту; упаковка оплачивается один раз, остаток используется следующими помещениями. Световые узлы потолка требуют уточнения и отдельно не добавлены.");
         notes.add("Двери — комплект по выбранному классу и монтаж отдельной строкой. Дополнительные доборы и отделка скрытого полотна не оценены без размеров. Основная мебель полностью обустроенной квартиры сохраняет прежний условный эквивалент.");
         if(a.targetState()==TargetState.FULLY_FURNISHED)bill.add("repair","Основная мебель","joinery",BigDecimal.valueOf(d.rooms().stream().filter(r->r.type().equals("living")).count()),n("0.5"));
@@ -108,9 +107,8 @@ public class UnitPriceCalculator implements RefinementCalculator {
         BigDecimal balcony=bill.sum("balcony"),loggia=bill.sum("loggia"),repair=bill.sum("repair").add(balcony).add(loggia),kitchen=bill.sum("kitchen");
         var time=timePlanner.calculate(d,bill.details());
         notes.addAll(time.assumptions());
-        notes.add("Коэффициенты на момент расчёта: "+bill.coefficients.description());
         return new RefinedEstimate(id,revision,true,bill.prices.version(),VERSION,AreaAllocator.VERSION,
-                totals(repair,bill.coefficients),totals(kitchen,bill.coefficients),totals(repair.add(kitchen),bill.coefficients),balcony,loggia,time.totalDays(),(int)Math.ceil(time.totalDays()*1.2),
+                totals(repair),totals(kitchen),totals(repair.add(kitchen)),balcony,loggia,time.totalDays(),(int)Math.ceil(time.totalDays()*1.2),
                 List.of("Работы и материалы по справочникам; комплекты по классу без повторного коэффициента", "Состав работ зависит от исходного состояния, цели и явных отказов"),List.copyOf(notes),bill.details(),time);
     }
     private void exterior(Ledger bill,String section,Exterior e,String defaultArea,BigDecimal height,List<String> notes){
@@ -118,11 +116,11 @@ public class UnitPriceCalculator implements RefinementCalculator {
         BigDecimal area=e.areaM2()==null?n(defaultArea):e.areaM2();
         if(e.areaM2()==null)notes.add(label+": расчётная площадь "+defaultArea+" м² (не обмер)");
         bill.finish(section,label+": пол","floor",e.floor(),area);
-        bill.finish(section,label+": стены","wall",e.walls(),walls(area,height,bill.coefficients));
+        bill.finish(section,label+": стены","wall",e.walls(),walls(area,height));
         if(!e.ceiling().equals("none"))bill.finish(section,label+": потолок","ceiling",e.ceiling(),area);
         boolean insulated=!e.insulation().equals("no");
         if(insulated){
-            bill.direct(section,label+": утепление стен и потолка ЭППС 50 мм — от","spb.insulation.wall50",walls(area,height,bill.coefficients).add(area),BigDecimal.ONE);
+            bill.direct(section,label+": утепление стен и потолка ЭППС 50 мм — от","spb.insulation.wall50",walls(area,height).add(area),BigDecimal.ONE);
             bill.direct(section,label+": утепление пола с ЦСП","spb.insulation.floor50",area,BigDecimal.ONE);
             notes.add(label+": для расчёта утепления принят ЭППС 50 мм: стены и потолок отдельно от пола. Материал и работа уже включены; декоративная отделка считается отдельно. Толщина — допущение модели, не теплотехнический подбор; стены оценены по прежней формуле без обмеров.");
         }
@@ -137,17 +135,16 @@ public class UnitPriceCalculator implements RefinementCalculator {
     private static boolean bundledKitchen(Kitchen k,boolean equipped){
         return k!=null&&(k.cabinets().equals("new")||k.cabinets().equals("unknown")&&equipped)&&Set.of("plastic","enamel").contains(k.facade())&&Set.of("unknown","laminated").contains(k.countertop());
     }
-    private static BigDecimal walls(BigDecimal area,BigDecimal height,CoefficientCatalog.Snapshot c){return area.sqrt(MathContext.DECIMAL64).multiply(n("4")).multiply(height).multiply(c.get("wall_share"));}
+    private static BigDecimal walls(BigDecimal area,BigDecimal height){return area.sqrt(MathContext.DECIMAL64).multiply(n("4")).multiply(height).multiply(n("0.85"));}
     private static String effective(String value,String general){return value.equals("inherit")?general:value;}
     private static boolean selected(Boolean v,boolean fallback){return v==null?fallback:v;}
-    private static BigDecimal work(String v,BigDecimal fallback,String excluded,CoefficientCatalog.Snapshot c){if(v.equals(excluded)||v.equals("none"))return BigDecimal.ZERO;if(v.equals("unknown"))return fallback;return Set.of("partial","local").contains(v)?c.get("partial_share"):BigDecimal.ONE;}
-    private static BigDecimal material(String code,CoefficientCatalog.Snapshot c){return switch(code){case "vinyl","paint","plastic"->c.get("material_medium");case "tile","plaster","drywall"->c.get("material_high");case "parquet","stone","enamel"->c.get("material_premium");default->BigDecimal.ONE;};}
+    private static BigDecimal work(String v,BigDecimal fallback,String excluded){if(v.equals(excluded)||v.equals("none"))return BigDecimal.ZERO;if(v.equals("unknown"))return fallback;return Set.of("partial","local").contains(v)?n("0.5"):BigDecimal.ONE;}
+    private static BigDecimal material(String code){return n(switch(code){case "vinyl","paint","plastic"->"1.2";case "tile","plaster","drywall"->"1.6";case "parquet","stone","enamel"->"2.2";default->"1";});}
     private static BigDecimal n(String value){return new BigDecimal(value);}
     private static BigDecimal money(BigDecimal value){return value.setScale(0,RoundingMode.HALF_UP);}
-    private static Totals totals(BigDecimal value,CoefficientCatalog.Snapshot c){BigDecimal max=money(value.multiply(c.get("budget_max")));return new Totals(money(value.multiply(c.get("budget_min"))),max,value,money(max.multiply(c.get("reserve"))));}
+    private static Totals totals(BigDecimal value){BigDecimal max=money(value.multiply(n("1.15")));return new Totals(money(value.multiply(n("0.9"))),max,value,money(max.multiply(n("1.1"))));}
     private static class Ledger {
         final PriceCatalog.Snapshot prices;
-        final CoefficientCatalog.Snapshot coefficients;
         final BigDecimal level;
         final String grade;
         final List<CostDetails.Line> lines=new ArrayList<>();
@@ -155,7 +152,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         final List<MaterialNeed> materials=new ArrayList<>();
         static final Map<String,com.fasterxml.jackson.databind.JsonNode> metadata=ru.prorab.pricing.model.ImportedPrices.ROWS.stream().collect(java.util.stream.Collectors.toMap(r->r.get("code").asText(),r->r));
         BigDecimal rough=BigDecimal.ZERO,finish=BigDecimal.ZERO,labor=BigDecimal.ZERO;
-        Ledger(PriceCatalog.Snapshot prices,FinishLevel level,CoefficientCatalog.Snapshot coefficients){this.coefficients=coefficients;this.prices=prices;this.grade=level.name().toLowerCase(Locale.ROOT);this.level=coefficients.get("level_"+this.grade);}
+        Ledger(PriceCatalog.Snapshot prices,FinishLevel level){this.prices=prices;this.grade=level.name().toLowerCase(Locale.ROOT);this.level=n(switch(level){case BUDGET->"1";case COMFORT->"1.3";case BUSINESS->"1.7";});}
         void add(String section,String name,String code,BigDecimal quantity,BigDecimal multiplier){
             quantity=quantity.setScale(4,RoundingMode.HALF_UP);if(quantity.signum()==0)return;
             direct(section,name,code,quantity,level.multiply(multiplier));
@@ -267,9 +264,7 @@ public class UnitPriceCalculator implements RefinementCalculator {
         }
         void appliance(String label,String title,int role){
             reference("kitchen",label+": "+title,"K_tech"+role+"_"+grade,BigDecimal.ONE);
-            String installation=switch(role){case 1->"L_kitchen_fridge";case 2->"L_kitchen_hob";case 3->"L_kitchen_oven";case 4->"L_kitchen_hood";case 5->"L_kitchen_dishwasher";default->null;};
-            if(installation!=null)reference("kitchen",label+": подключение — "+title,installation,BigDecimal.ONE);
-            else direct("kitchen",label+": подключение — "+title,"ref.L_kitchen_tech",BigDecimal.ONE,n("0.1666666667"));
+            direct("kitchen",label+": подключение — "+title,"ref.L_kitchen_tech",BigDecimal.ONE,n("0.1666666667"));
         }
         void finish(String section,String name,String surface,String material,BigDecimal quantity){
             String op=switch(surface){

@@ -35,9 +35,9 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     await page.getByLabel('Название проекта · необязательно',{exact:true}).fill('Expo МОЯ квартира 33 м²');
     await page.getByLabel('Площадь квартиры, м²',{exact:true}).fill('38');
     assert.equal(await page.getByLabel('Название проекта · необязательно',{exact:true}).inputValue(),'Expo МОЯ квартира 38 м²');
-    assert.equal(await page.getByLabel('Адрес · необязательно',{exact:true}).count(),0);
+    await page.getByLabel('Адрес · необязательно',{exact:true}).fill('Тестовый адрес');
     await button(page,'Продолжить').click();await button(page,'Старая отделка').waitFor();
-    assert.equal(creates,1);assert.equal((await api('/projects/'+id)).address,null);
+    assert.equal(creates,1);assert.equal((await api('/projects/'+id)).address,'Тестовый адрес');
     await button(page,'Старая отделка').click();assert.equal((await api('/projects/'+id)).currentState,null);
     await button(page,'Назад').click();await page.getByLabel('Площадь квартиры, м²',{exact:true}).fill('68');
     await button(page,'Продолжить').click();await button(page,'Старая отделка').waitFor();

@@ -18,7 +18,7 @@ test('Price catalog release: live database, wizard, recalculation, finance and s
   const root='/projects/'+project.projectId;
   for(const [step,body] of [[2,{currentState:'old_finish'}],[3,{targetState:'move_in_ready'}],[4,{roomsCount:2,bathroomsCount:1,redevelopment:false}],[5,{finishLevel:'comfort'}]])
    project=await request(root+'/steps/'+step+(step===5?'/estimate':''),{version:project.version,...body},'PUT');
-  assert.equal(project.estimateStatus,'ready');assert.ok(project.estimateDetails.timePlan.version.startsWith('phases-4-'));assert.ok(project.estimateDetails.timePlan.workloads.length>0);assert.equal(project.estimateDetails.algorithmVersion,'catalog-pricing-8');
+  assert.equal(project.estimateStatus,'ready');assert.ok(project.estimateDetails.timePlan.version.startsWith('phases-4-'));assert.ok(project.estimateDetails.timePlan.workloads.length>0);assert.equal(project.estimateDetails.algorithmVersion,'catalog-pricing-7');
   assert.equal(project.estimateDetails.total.expected,project.estimateDetails.details.lines.reduce((sum,l)=>sum+l.amountRub,0));
   assert.ok(project.estimateDetails.details.lines.some(l=>l.priceCode==='average.work.laminate'));
   project=await request(root+'/activate?version='+project.version,{});

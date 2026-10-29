@@ -26,20 +26,6 @@ class ExecutionApiTest {
  }
  JsonNode command(String path,String action,JsonNode s,Map<String,Object> data)throws Exception{var b=new HashMap<>(data);b.put("version",s.get("version").asLong());return call(path+"/"+action,b,200);}
  @org.springframework.test.context.bean.override.mockito.MockitoBean ru.prorab.execution.service.OcrSpaceClient ocr;
- @Test void repairStatusFollowsStartDateAndRescheduleWithoutChangingProjectLifecycle()throws Exception{
-  String path=create(),projectPath=path.replace("/execution","");
-  assertEquals("planning",call(projectPath,null,200).get("repairStatus").asText());
-  var state=command(path,"start",call(path,null,200),Map.of("date",LocalDate.now().plusDays(1).toString()));
-  assertEquals("planning",call(projectPath,null,200).get("repairStatus").asText());
-  assertTrue(call("/api/projects",null,200).get(0).get("executionProgressPercent").isNull());
-  var saved=json.treeToValue(state.get("data"),ru.prorab.execution.model.ExecutionState.class);
-  assertEquals("planning",ru.prorab.execution.service.ExecutionService.repairStatus(saved,LocalDate.now()));
-  assertEquals("in_progress",ru.prorab.execution.service.ExecutionService.repairStatus(saved,LocalDate.now().plusDays(1)));
-  state=command(path,"reschedule",state,Map.of("taskId",state.at("/data/tasks/0/id").asText(),"date",LocalDate.now().toString()));
-  var project=call(projectPath,null,200);
-  assertEquals("in_progress",project.get("repairStatus").asText());assertEquals("active",project.get("status").asText());
-  assertEquals(0,call("/api/projects",null,200).get(0).get("executionProgressPercent").asInt());
- }
  @Test void projectListProgressAppearsOnlyAfterStartAndMatchesSchedule()throws Exception{
   String path=create();
   assertTrue(call("/api/projects",null,200).get(0).get("executionProgressPercent").isNull());
@@ -136,18 +122,6 @@ class ExecutionApiTest {
  }
  @Test void anotherAccountCannotReadOrMutateExecution()throws Exception{
   String path=create();call(path,null,200);register();call(path,null,404);call(path+"/start",Map.of("version",0,"date",LocalDate.now().toString()),404);
- }
- @Test void financialTrackerUsesSavedReserveInsteadOfHardcodedTenPercent()throws Exception{
-  var previous=jdbc.queryForObject("select coefficient_value from calculation_coefficients where code='reserve'",java.math.BigDecimal.class);
-  try{
-   jdbc.update("update calculation_coefficients set coefficient_value=1.25 where code='reserve'");
-   String path=create();var s=call(path,null,200);var project=call(path.replace("/execution",""),null,200);
-   var totals=project.at("/estimateDetails/total");
-   assertEquals(totals.get("withReserve").decimalValue(),s.get("budgetWithReserve").decimalValue());
-   assertEquals(0,totals.get("max").decimalValue().multiply(new java.math.BigDecimal("1.25")).setScale(0,java.math.RoundingMode.HALF_UP).compareTo(s.get("budgetWithReserve").decimalValue()));
-   jdbc.update("update calculation_coefficients set coefficient_value=1.5 where code='reserve'");
-   assertEquals(s.get("budgetWithReserve"),call(path,null,200).get("budgetWithReserve"));
-  }finally{jdbc.update("update calculation_coefficients set coefficient_value=? where code='reserve'",previous);}
  }
  @Test void newCandidateDoesNotChangePlanAndSyncPreservesExpensesAndStartedTasks()throws Exception{
   String path=create(),ref=path.replace("/execution","/refinement");var s=call(path,null,200);

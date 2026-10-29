@@ -15,10 +15,10 @@ import { Screen, Check, Grid, Metric, Button, Card, Field, Counter, ErrorText, B
 
 const titles=['','Об объекте','Текущее состояние квартиры','Желаемый результат ремонта','Параметры квартиры','Уровень ремонта','Предварительная оценка'];
 const descriptions:Record<string,string>={
-  no_finish:'Только несущие стены и перекрытия. Отсутствуют перегородки, стяжка, штукатурка и все коммуникации',white_box:'Выполнены черновые работы: стены оштукатурены, полы имеют стяжку, проведены электрика и трубы',
-  old_finish:'Вторичное жильё с устаревшим ремонтом. Требуется демонтаж',lived_in:'Квартира пригодна для проживания, требуется обновление ремонта.',
-  finish_only:'Выполнены все финишные работы: стены, полы, потолки, установлены двери. Сантехника и мебель отсутствуют',move_in_ready:'Выполнена чистовая отделка, установлена кухня, сантехника и базовое оборудование',fully_furnished:'Готовая квартира с основной мебелью.',
-  budget:'Базовая отделка. Практичные и износостойкие материалы (эконом-сегмент, российские или бюджетные бренды)',comfort:'Средний сегмент. Качественные материалы с хорошим дизайном (популярные европейские или премиальные российские бренды)',business:'Премиум-сегмент. Эксклюзивные материалы, дизайнерская сантехника, натуральные или высокотехнологичные покрытия',
+  no_finish:'Бетонные стены и пол, чистовая отделка отсутствует.',white_box:'Основные черновые работы выполнены, чистовой отделки нет.',
+  old_finish:'Отделку потребуется полностью или частично демонтировать.',lived_in:'Квартира пригодна для проживания, требуется обновление ремонта.',
+  finish_only:'Отделка, двери, электрика и сантехнические выводы готовы.',move_in_ready:'Чистовая отделка, готовая кухня и оборудованные санузлы.',fully_furnished:'Готовая квартира с основной мебелью.',
+  budget:'Практичные материалы и оборудование базового сегмента.',comfort:'Материалы и оборудование среднего сегмента.',business:'Материалы и решения повышенного ценового сегмента.',
 };
 export default function Wizard() {
   const params=useLocalSearchParams<{step:string}>(),step=Math.max(1,Math.min(6,Number(params.step)||1));
@@ -36,7 +36,7 @@ export default function Wizard() {
   async function save() {
     await run(async()=>{
       const project=wizard.project;
-      const body=step===1?{areaM2:amount(local.areaM2),name:local.nameSource==='user'?local.name:''}:
+      const body=step===1?{areaM2:amount(local.areaM2),name:local.nameSource==='user'?local.name:'',address:local.address}:
         step===2?{currentState:local.currentState}:step===3?{targetState:local.targetState}:
         step===4?{otherRoomsRepair:local.otherRoomsRepair,roomsCount:local.roomsCount,bathroomsCount:local.bathroomsCount,redevelopment:local.redevelopment}:{finishLevel:local.finishLevel};
       if(step===5)emit({name:'estimate_requested',projectId:project?.projectId});
@@ -64,9 +64,10 @@ export default function Wizard() {
       }}/>
       <Body>Площадь: от 5 до 9999 м², не более одного знака после запятой.</Body>
       <Field label="Название проекта · необязательно" value={local.name} disabled={busy} placeholder="Автоматически сформируется" onChange={v=>{local.nameSource=v?'user':'auto';change('name',v);}}/>
+      <Field label="Адрес · необязательно" value={local.address} onChange={v=>change('address',v)} maxLength={250} disabled={busy}/>
     </>}
     {[2,3,5].includes(step)&&<>
-      <Body>{step===2?'Определите исходное состояние объекта.':step===3?'До какого состояния хотите довести объект?':'Влияет на класс материалов и итоговую смету. Перечень работ остаётся неизменным'}</Body>
+      <Body>{step===2?'Определите исходное состояние объекта.':step===3?'До какого состояния хотите довести объект?':'Уровень влияет на стоимость, но не определяет перечень работ сам по себе.'}</Body>
       <Grid>{Object.entries(choices[selectedKey]).filter(([key])=>key!=='fully_furnished').map(([key,label])=><Card key={key} title={label} description={descriptions[key]} selected={local[selectedKey]===key} disabled={busy||key==='fully_furnished'} onPress={()=>change(selectedKey,key)}/>)}</Grid>
       {step===5&&<Body>Уровень ремонта можно изменить позже.</Body>}
     </>}
@@ -79,23 +80,19 @@ export default function Wizard() {
       <Card title="Нет" selected={!local.redevelopment} onPress={()=>change('redevelopment',false)} disabled={busy}/>
     </>}
     {step===6&&p&&<>
-      <Heading>{p.name}</Heading>
-      <Body>Площадь {p.areaM2} м² · комнаты {p.roomsCount??'—'} · санузлы {p.bathroomsCount??'—'}</Body>
-      {!p.estimateDetails?.details&&<Demo/>}
+      <Heading>{p.name}</Heading><Demo/>
       {p.estimateStatus==='failed'?<Notice>Проект создан. Сейчас не удалось рассчитать стоимость и срок.</Notice>:null}
       <Grid><Metric label="Бюджет" value={range(p.budgetMinRub,p.budgetMaxRub)}/><Metric label="Срок" value={durationRange(p.durationMinDays,p.durationMaxDays)} tone="lavender"/></Grid>
       <EstimateDetails estimate={p.estimateDetails}/>
-      <Notice>
+      <Notice>{p.areaM2} м² · комнаты {p.roomsCount??'—'} · санузлы {p.bathroomsCount}{'\n'}
         {choices.currentState[p.currentState as keyof typeof choices.currentState]} → {choices.targetState[p.targetState as keyof typeof choices.targetState]}{'\n'}
         {choices.finishLevel[p.finishLevel as keyof typeof choices.finishLevel]}</Notice>
-      {p.estimateStatus!=='ready'&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>run(async()=>{wizard.project=await api.estimate(p);if(wizard.project.estimateStatus==='failed')setError('Повторный расчёт не выполнен. Проверьте площадь и состав помещений через «Исправить параметры» или «Детализировать параметры».');redraw(n=>n+1);})}/>}
+      {p.estimateStatus!=='ready'&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>run(async()=>{wizard.project=await api.estimate(p);if(wizard.project.estimateStatus==='failed')setError('Повторный расчёт не выполнен. Проверьте площадь и состав помещений через «Исправить параметры» или «Уточнить расчёт».');redraw(n=>n+1);})}/>}
       {p.estimateStatus==='failed'&&<Button secondary label="Исправить параметры" disabled={busy} onPress={()=>router.replace('/wizard/4')}/>}
-      <Grid>
-       <Button secondary label="Детализировать параметры" disabled={busy} onPress={()=>activate(true)}/>
-       <Button label="Перейти в проект" disabled={busy} onPress={()=>activate()}/>
-      </Grid>
+      <Button label="Перейти в проект" disabled={busy} onPress={()=>activate()}/>
       <Button secondary label="Удалить проект" disabled={busy} onPress={()=>setDeleting(true)}/>
       <Modal visible={deleting} animationType="slide" onRequestClose={()=>setDeleting(false)}><DeleteProject project={p} onCancel={()=>setDeleting(false)} onDeleted={()=>{setDeleting(false);wizard.project=null;router.replace('/');}}/></Modal>
+      <Button secondary label="Уточнить расчёт" disabled={busy} onPress={()=>activate(true)}/>
     </>}
     <ErrorText message={error}/>
     {conflict&&<><Notice>Данные изменены в другом сеансе. Ваш ввод сохранён.</Notice><Button secondary label="Загрузить актуальную версию, сохранив мой ввод" disabled={busy} onPress={()=>run(async()=>{
