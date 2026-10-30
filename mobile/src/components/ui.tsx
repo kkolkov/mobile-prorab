@@ -30,8 +30,8 @@ export function Grid({children}:React.PropsWithChildren){
  const columns=width>=700&&fontScale<1.4;
  return <View style={{flexDirection:'row',flexWrap:'wrap',gap:16}}>{React.Children.toArray(children).map((child,i)=><View key={i} style={{width:columns?'48%':'100%',flexGrow:1,minWidth:0}}>{child}</View>)}</View>;
 }
-export function Metric({label,value,tone='sage'}:{label:string;value:string;tone?:'sage'|'lavender'}){
- return <View style={[styles.metric,{backgroundColor:palette[tone]}]}><Text style={styles.text}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
+export function Metric({label,value,hint,tone='sage'}:{label:string;value:string;hint?:string;tone?:'sage'|'lavender'}){
+ return <View style={[styles.metric,{backgroundColor:palette[tone]}]}><Text style={styles.text}>{label}</Text><Text style={styles.metricValue}>{value}</Text>{!!hint&&<Text style={{fontSize:13,color:palette.muted}}>{hint}</Text>}</View>;
 }
 export function Screen({title,subtitle,step,back,home,busy,children,scrollRef,headerRight}: React.PropsWithChildren<{
   title:string;subtitle?:string;step?:number;back?:()=>void;home?:()=>void;busy?:boolean;scrollRef?:React.Ref<ScrollView>;headerRight?:React.ReactNode;

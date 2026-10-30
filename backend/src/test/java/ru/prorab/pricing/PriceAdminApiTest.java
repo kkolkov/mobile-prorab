@@ -20,6 +20,16 @@ class PriceAdminApiTest {
  JsonNode list()throws Exception{return json.readTree(mvc.perform(get(path)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));}
  ObjectNode floor()throws Exception{for(var row:list().get("rows"))if(row.get("code").asText().equals("floor"))return (ObjectNode)row;throw new AssertionError();}
  JsonNode save(ObjectNode body,int status)throws Exception{return json.readTree(mvc.perform(put(path+"/floor").contentType("application/json").content(json.writeValueAsString(body))).andExpect(status().is(status)).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8));}
+
+ @Test void verificationNamingAndCategoriesAreValidatedAndPersisted()throws Exception{
+  var row=floor();row.put("verified",false);save(row,400);
+  row.put("verified",true);row.put("category","work");row.put("subcategory","plumbing");save(row,400);
+  row.putNull("subcategory");save(row,400);
+  row.put("subcategory","finish");row.put("name","укладка ламината");var saved=save(row,200);
+  assertEquals("Работа Укладка ламината",saved.get("title").asText());assertEquals("approved",saved.get("status").asText());
+  assertEquals("Укладка ламината",floor().get("name").asText());assertEquals("finish",floor().get("subcategory").asText());
+  var fresh=floor();fresh.put("name"," ");save(fresh,400);
+ }
  @Test void coefficientsArePersistedBoundedAndProtectedFromStaleWrites()throws Exception{
   String root="/api/porabadmin/coefficients";
   var all=json.readTree(mvc.perform(get(root)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());assertEquals(12,all.size());
@@ -39,12 +49,13 @@ class PriceAdminApiTest {
   String code="average.work.laminate";
   ObjectNode body=null;for(var r:list().get("rows"))if(r.get("code").asText().equals(code))body=(ObjectNode)r;
   assertNotNull(body);assertEquals(1090.00,body.get("unitPriceRub").asDouble());
-  body.put("unitPriceRub",400);body.put("sourceNote","Проверка длинного описания состава: "+"источник ".repeat(100));
+  body.put("verified",true);body.put("status","approved");body.put("unitPriceRub",400);body.put("sourceNote","Проверка длинного описания состава: "+"источник ".repeat(100));
   var saved=json.readTree(mvc.perform(put(path+"/"+code).contentType("application/json").content(body.toString())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
   mvc.perform(put(path+"/"+code).contentType("application/json").content(body.toString())).andExpect(status().isConflict());
   mvc.perform(post(path+"/"+code+"/delete?version="+saved.get("version").asLong())).andExpect(status().isOk());
   assertThrows(IllegalStateException.class,()->catalog.snapshot().rate(code));
-  body.putNull("version");mvc.perform(put(path+"/"+code).contentType("application/json").content(body.toString())).andExpect(status().isOk());
+  for(var r:list().get("rows"))if(r.get("code").asText().equals(code))body.put("version",r.get("version").asLong());
+  mvc.perform(put(path+"/"+code).contentType("application/json").content(body.toString())).andExpect(status().isOk());
   assertEquals(400,catalog.snapshot().rate(code).price().intValueExact());
  }
  @Test void timeNormsAreSeparateValidatedAndVersioned()throws Exception{
@@ -84,8 +95,8 @@ class PriceAdminApiTest {
  @Test void deleteRequiresCurrentVersionAndRestoreDoesNotInsertFakePrice()throws Exception{
   var row=floor();mvc.perform(post(path+"/floor/delete?version=999")).andExpect(status().isConflict());
   mvc.perform(post(path+"/floor/delete?version="+row.get("version").asLong())).andExpect(status().isOk());
-  assertEquals(499,list().get("rows").size());assertEquals("floor",list().at("/missing/0/code").asText());assertThrows(IllegalStateException.class,()->catalog.snapshot().rate("floor"));
-  save(row,404);row.putNull("version");save(row,200);assertEquals(500,list().get("rows").size());assertNotNull(catalog.snapshot());
+  assertEquals(500,list().get("rows").size());assertEquals(0,list().get("missing").size());assertEquals("deleted",floor().get("status").asText());assertThrows(IllegalStateException.class,()->catalog.snapshot().rate("floor"));
+  row.put("verified",true);save(row,409);row=floor();row.put("verified",true);row.put("status","approved");save(row,200);assertEquals(500,list().get("rows").size());assertNotNull(catalog.snapshot().rate("floor"));
   save(row,409);
  }
 }

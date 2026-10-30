@@ -21,6 +21,7 @@ public class PriceCatalog {
     public Snapshot snapshot(){
         Map<String,Rate> rates=new TreeMap<>();
         for(PriceMatrixEntry p:repository.findAll()){
+            if(p.isDeleted())continue;
             rates.put(p.getCode(),new Rate(p.getCode(),p.getUnit(),p.getUnitPriceRub(),p.getRoughShare(),p.getLaborShare(),p.getSourceNote(),p.getPriceDate(),p.isVerified()));
         }
         try {

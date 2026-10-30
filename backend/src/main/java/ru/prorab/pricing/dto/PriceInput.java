@@ -9,5 +9,6 @@ public record PriceInput(
  @NotNull @DecimalMin("0") @DecimalMax("1") @Digits(integer=1,fraction=4) BigDecimal laborShare,
  @NotBlank @Size(max=4000) String sourceNote,
  @NotNull @PastOrPresent LocalDate priceDate,
- boolean verified
+ @AssertTrue(message="Подтвердите проверку цены по указанному источнику") boolean verified,
+ String category,String subcategory,String status, @Size(max=255) String name
 ) {}

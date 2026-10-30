@@ -8,7 +8,7 @@ test('Project status popup does not move layout and respects schedule start',asy
   const page=await browser.newPage();let startDate=null;
   await page.route('**/*',async route=>{
    const path=new URL(route.request().url()).pathname;
-   if(path.endsWith('/execution'))return route.fulfill({json:{data:{startDate},progressPercent:0}});
+   if(path.endsWith('/execution'))return route.fulfill({json:{data:{startDate,budget:{total:{min:100000},durationMinDays:30,durationMaxDays:45}},progressPercent:0,planBudget:125000,budgetWithReserve:160000,totalDays:37}});
    if(path==='/')return route.fulfill({contentType:'text/html',body:'<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/app.css"><main id="app" class="shell"></main>'});
    await route.fulfill({contentType:path.endsWith('.css')?'text/css':'text/javascript',body:await readFile(new URL('../..'+path,import.meta.url))});
   });
@@ -19,6 +19,10 @@ test('Project status popup does not move layout and respects schedule start',asy
   });
   for(const width of [1280,390]){
    await page.setViewportSize({width,height:900});await render();
+   await page.waitForFunction(()=>document.querySelector('#project-duration')?.textContent==='1 мес. 7 дн.');
+   assert.equal((await page.locator('#project-budget').textContent()).replace(/\s/g,''),'125000₽');
+   assert.equal((await page.locator('#project-budget-range').textContent()).replace(/\s/g,''),'От100000до160000₽срезервом');
+   assert.equal(await page.locator('#project-duration-range').textContent(),'По смете: от 1 мес. до 1 мес. 15 дн. с запасом');
    assert.deepEqual(await page.locator('.estimate-details > summary').allTextContents(),['Состав оценки','Сроки выполнения работ','Дополнительно']);
    assert.equal(await page.locator('.estimate-details[open]').count(),0);
    await page.locator('.estimate-additional > summary').click();

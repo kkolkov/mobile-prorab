@@ -1,6 +1,6 @@
 import {projectCard,bindProjectCards} from './project-card.js';
 import {estimateDetails} from './estimate-details.js';
-import {durationRange,projectsSubtitle} from './display.js';
+import {formatDays,durationRange,projectsSubtitle} from './display.js';
 import {deleteProject} from './delete-project.js';
 import {renameProject} from './rename-project.js';
 import {questionnaireHtml,bindQuestionnaire} from './onboarding/form.js';
@@ -58,8 +58,8 @@ function db01(){
  const p=state.project;
  renderScreen(app,`<div class="top"><a class="brand" href="/" aria-label="Мобильный прораб — Мои проекты">Мобильный прораб</a><span class="step">Проект</span></div><h1>${escapeText(p.name)}</h1>
  ${p.estimateStatus==='stale'?'<div class="notice">Активная смета рассчитана по прежним параметрам. Уточнённая смета применяется отдельно.</div>':''}
- <div class="summary"><div><span class="muted">Бюджет</span><div class="big">${p.budgetMinRub?money(p.budgetMinRub)+' — '+money(p.budgetMaxRub)+' ₽':'Пока не рассчитан'}</div></div>
- <div><span class="muted">Срок</span><div class="big">${durationRange(p.durationMinDays,p.durationMaxDays)}</div></div></div>
+ <div class="summary"><div><span class="muted">Бюджет</span><div class="big" id="project-budget">Загружаем…</div><small class="muted" id="project-budget-range"></small></div>
+ <div><span class="muted">Срок</span><div class="big" id="project-duration">Загружаем…</div><small class="muted" id="project-duration-range"></small></div></div>
  <div class="project-planning"><div><span class="muted">Статус</span><div class="project-status-row"><h2 id="project-status">Планирование</h2><button type="button" id="status-info" class="status-info" aria-label="О статусе проекта" aria-haspopup="dialog">ⓘ</button></div><dialog id="status-popup" aria-labelledby="status-popup-title"><h2 id="status-popup-title">О статусе проекта</h2><p>Статус изменится на "В работе" автоматически, как только в графике работ наступит дата начала. Вы можете указать ее в разделе "График работ"</p><button class="primary" id="status-popup-close">Понятно</button></dialog></div><button class="primary" id="refine">Уточнить параметры проекта</button></div>
  ${estimateDetails(state.project.estimateDetails,{compact:true})}<h2>Инструменты проекта</h2><div class="grid"><button class="card" id="schedule"><b>График работ</b><span>Этапы, даты и прогресс ремонта</span></button><button class="card" id="finance"><b>Финансовый трекер</b><span>План, расходы и остаток бюджета</span></button></div><div class="error" role="alert">${escapeText(state.error)}</div>`);
  document.querySelector('#refine').onclick=goRefinement;
@@ -72,10 +72,15 @@ function db01(){
  popup.onclick=e=>{if(e.target===popup){const r=popup.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)popup.close();}};
  request('/projects/'+p.projectId+'/execution').then(snapshot=>{
   if(!statusNode.isConnected)return;
+  const budget=snapshot.data.budget;
+  document.querySelector('#project-budget').textContent=snapshot.planBudget==null?'Пока не рассчитан':money(snapshot.planBudget)+' ₽';
+  document.querySelector('#project-budget-range').textContent=budget?.total?.min!=null&&snapshot.budgetWithReserve!=null?`От ${money(budget.total.min)} до ${money(snapshot.budgetWithReserve)} ₽ с резервом`:'';
+  document.querySelector('#project-duration').textContent=snapshot.totalDays>0?formatDays(snapshot.totalDays):'График пока не задан';
+  document.querySelector('#project-duration-range').textContent=budget?.durationMinDays!=null&&budget?.durationMaxDays!=null?`По смете: от ${formatDays(budget.durationMinDays)} до ${formatDays(budget.durationMaxDays)} с запасом`:'';
   const start=snapshot.data.startDate,now=new Date(),today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
   const inWork=!!start&&start<=today&&snapshot.progressPercent<100;
   statusNode.textContent=snapshot.progressPercent===100?'Все этапы завершены':inWork?'В работе':'Планирование';info.hidden=inWork;
- }).catch(()=>{if(statusNode.isConnected)statusNode.textContent='Статус недоступен';});
+ }).catch(()=>{if(statusNode.isConnected){statusNode.textContent='Статус недоступен';document.querySelector('#project-budget').textContent='Не удалось загрузить';document.querySelector('#project-duration').textContent='Не удалось загрузить';}});
 }
 async function goExecution(tab){const {openExecution}=await import('./execution/app.js');await openExecution(app,state.project,()=>void start(),tab);}
 export async function start(){

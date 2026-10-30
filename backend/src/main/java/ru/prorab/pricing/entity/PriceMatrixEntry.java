@@ -17,6 +17,14 @@ public class PriceMatrixEntry {
     private LocalDate priceDate;
     @Version private Long version;
     private boolean verified;
+    private String category;
+    private String subcategory;
+    private boolean deleted;
+    public String getCategory(){return category;}
+    public String getSubcategory(){return subcategory;}
+    public boolean isDeleted(){return deleted;}
+    public void setDeleted(boolean value){deleted=value;}
+    public void classify(String category,String subcategory){this.category=category;this.subcategory=subcategory;}
     public long getVersion(){return version==null?0:version;}
     public boolean isVerified(){return verified;}
     protected PriceMatrixEntry() {}
@@ -26,6 +34,7 @@ public class PriceMatrixEntry {
     }
     public String getCode(){return code;}
     public String getTitle(){return title;}
+    public void rename(String title){this.title=title;}
     public String getUnit(){return unit;}
     public BigDecimal getUnitPriceRub(){return unitPriceRub;}
     public BigDecimal getRoughShare(){return roughShare;}
