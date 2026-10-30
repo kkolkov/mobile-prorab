@@ -161,11 +161,14 @@ public class RefinementService {
     @Transactional
     public RefinementResponse discard(UUID id,long version){
         Project p=project(id);checkVersion(p,version);ProjectRefinement r=prepare(p);
-        if(r.getActiveInputJson()==null)throw new BusinessException("Для старых уточнений исходные параметры не сохранены. Автоматически отменить их нельзя; текущая смета не изменена.");
-        RefinementData original=read(r.getActiveInputJson(),RefinementData.class);
-        r.setInputJson(r.getActiveInputJson());r.setCandidateJson(null);r.setCalculationId(null);r.incrementRevision();r.setCalculationStatus("not_requested");
-        updateProject(p,original);
-        p.setEstimateStatus(r.getActiveEstimateJson()==null?EstimateStatus.FAILED:EstimateStatus.READY);
+        // Legacy projects may have no historical input snapshot; their accepted estimate is still intact.
+        boolean hasOriginal=r.getActiveInputJson()!=null;
+        if(hasOriginal){
+            RefinementData original=read(r.getActiveInputJson(),RefinementData.class);
+            r.setInputJson(r.getActiveInputJson());updateProject(p,original);
+        }
+        r.setCandidateJson(null);r.setCalculationId(null);r.incrementRevision();r.setCalculationStatus("not_requested");
+        if(hasOriginal)p.setEstimateStatus(r.getActiveEstimateJson()==null?EstimateStatus.FAILED:EstimateStatus.READY);
         p.setUpdatedAt(Instant.now());projects.saveAndFlush(p);
         r.setCalculationProjectVersion(p.getVersion());refinements.saveAndFlush(r);
         return response(p,r);

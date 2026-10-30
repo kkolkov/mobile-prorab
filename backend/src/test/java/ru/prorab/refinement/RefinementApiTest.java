@@ -153,13 +153,20 @@ class RefinementApiTest {
         a.put("areaM2",90);edited=save(url,applied,"apartment",a);
         restored=call("POST",url+"/discard",Map.of("version",edited.at("/project/version").asLong()),200);
         assertEquals(applied.get("data"),restored.get("data"));assertEquals(applied.get("activeEstimate"),restored.get("activeEstimate"));
+        for(String field:List.of("budgetMinRub","budgetMaxRub","durationMinDays","durationMaxDays"))
+            assertEquals(applied.at("/project/"+field),restored.at("/project/"+field));
         assertEquals(restored.get("data"),call("GET",url,null,200).get("data"));
     }
-    @Test void legacyUnappliedChangesWithoutBaselineAreNotSilentlyReplaced()throws Exception{
+    @Test void legacyDiscardKeepsAcceptedCostAndDurationWithoutInventingOldParameters()throws Exception{
         String url=create();JsonNode original=call("GET",url,null,200);ObjectNode a=original.at("/data/apartment").deepCopy();a.put("areaM2",80);
         JsonNode saved=save(url,original,"apartment",a);
         jdbc.update("update project_refinements set active_input_json=null where project_id=?",UUID.fromString(url.split("/")[3]));
-        call("POST",url+"/discard",Map.of("version",saved.at("/project/version").asLong()),400);
+        JsonNode restored=call("POST",url+"/discard",Map.of("version",saved.at("/project/version").asLong()),200);
+        assertEquals(original.get("activeEstimate"),restored.get("activeEstimate"));
+        for(String field:List.of("budgetMinRub","budgetMaxRub","durationMinDays","durationMaxDays"))
+            assertEquals(original.at("/project/"+field),restored.at("/project/"+field));
+        assertTrue(restored.get("candidateEstimate").isNull());
+        assertEquals("not_requested",restored.get("calculationStatus").asText());
         assertEquals(saved.get("data"),call("GET",url,null,200).get("data"));
     }
 
