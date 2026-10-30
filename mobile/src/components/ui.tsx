@@ -58,13 +58,14 @@ export function Card({title,description,selected,onPress,disabled,statusDescript
     <Text style={styles.label}>{title}{selected?' ✓':''}</Text>{description&&<Text style={[styles.text,statusDescription&&{color:'#465a4f',fontWeight:'500'}]}>{description}</Text>}
   </Pressable>;
 }
-export function Field({label,value,onChange,numeric=false,required=false,scale=1,min=0,max=Infinity,placeholder,maxLength=100,disabled=false}: {
-  label:string;value:Numeric;onChange:(value:string)=>void;numeric?:boolean;required?:boolean;scale?:number;min?:number;max?:number;placeholder?:string;maxLength?:number;disabled?:boolean;
+export function Field({label,value,onChange,numeric=false,required=false,scale=1,min=0,max=Infinity,placeholder,hint,maxLength=100,disabled=false}: {
+  label:string;value:Numeric;onChange:(value:string)=>void;numeric?:boolean;required?:boolean;scale?:number;min?:number;max?:number;placeholder?:string;hint?:string;maxLength?:number;disabled?:boolean;
 }) {
   const [focused,setFocused]=useState(false);
   const error=numeric&&String(value??'')?numberError(value,required,scale,min,max):'';
   return <View style={styles.field}><Text style={styles.label}>{label}</Text><TextInput accessibilityLabel={label} value={String(value??'')} onChangeText={onChange}
     onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} keyboardType={numeric?'decimal-pad':'default'} editable={!disabled} maxLength={maxLength} placeholder={placeholder} placeholderTextColor="#68766d" style={[styles.input,focused&&{borderColor:palette.accent,borderWidth:2},disabled&&styles.disabled,!!error&&{borderColor:'#b3261e'}]}/>
+    {!!hint&&<Text style={{fontSize:12,lineHeight:18,color:palette.muted}}>{hint}</Text>}
     {!!error&&<ErrorText message={error}/>}</View>;
 }
 export function Select({label,value,options,onChange,disabled,disabledOptions=[],hiddenOptions=[]}: {label:string;value:string|null;options:Record<string,string>;onChange:(value:string)=>void;disabled?:boolean;disabledOptions?:string[];hiddenOptions?:string[]}) {

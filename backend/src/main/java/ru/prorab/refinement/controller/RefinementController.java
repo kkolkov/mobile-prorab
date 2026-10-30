@@ -15,5 +15,6 @@ public class RefinementController {
     public record VersionRequest(@NotNull Long version) {}
     public record ApplyRequest(@NotNull Long version,@NotNull UUID estimateId) {}
     @PostMapping("/calculate") public RefinementResponse calculate(@PathVariable UUID projectId,@Valid @RequestBody VersionRequest request){return service.retry(projectId,request.version());}
+    @PostMapping("/discard") public RefinementResponse discard(@PathVariable UUID projectId,@Valid @RequestBody VersionRequest request){return service.discard(projectId,request.version());}
     @PostMapping("/apply") public RefinementResponse apply(@PathVariable UUID projectId,@Valid @RequestBody ApplyRequest request){return service.apply(projectId,request.version(),request.estimateId());}
 }

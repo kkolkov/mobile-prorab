@@ -44,6 +44,8 @@ class RefinementApiTest {
     }
     private JsonNode save(String url,JsonNode state,String section,JsonNode data)throws Exception{return call("PUT",url+"/"+section,Map.of("version",state.at("/project/version").asLong(),"data",data),200);}
     private JsonNode ready(String url)throws Exception{
+        JsonNode before=call("GET",url,null,200);
+        if(!Set.of("ready","pending").contains(before.get("calculationStatus").asText()))call("POST",url+"/calculate",Map.of("version",before.at("/project/version").asLong()),200);
         long deadline=System.nanoTime()+5_000_000_000L;
         JsonNode state;
         do{state=call("GET",url,null,200);if(!state.get("calculationStatus").asText().equals("pending"))break;Thread.sleep(20);}while(System.nanoTime()<deadline);
@@ -137,15 +139,95 @@ class RefinementApiTest {
         call("POST",url+"/apply",Map.of("version",second.at("/project/version").asLong(),"estimateId",firstEstimate.id()),400);
     }
 
+    @Test void discardingRestoresAppliedParametersAndBudgetAndRejectsStaleVersion()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);
+        ObjectNode a=original.at("/data/apartment").deepCopy();a.put("areaM2",80);
+        JsonNode edited=save(url,original,"apartment",a);JsonNode calculated=ready(url);
+        call("POST",url+"/discard",Map.of("version",original.at("/project/version").asLong()),409);
+        JsonNode restored=call("POST",url+"/discard",Map.of("version",calculated.at("/project/version").asLong()),200);
+        assertEquals(original.get("data"),restored.get("data"));assertEquals(original.get("activeEstimate"),restored.get("activeEstimate"));
+        assertEquals(original.at("/project/areaM2"),restored.at("/project/areaM2"));assertEquals(original.at("/project/budgetMinRub"),restored.at("/project/budgetMinRub"));
+        assertEquals("not_requested",restored.get("calculationStatus").asText());assertTrue(restored.get("candidateEstimate").isNull());
+        edited=save(url,restored,"apartment",a);calculated=ready(url);
+        JsonNode applied=call("POST",url+"/apply",Map.of("version",calculated.at("/project/version").asLong(),"estimateId",calculated.at("/candidateEstimate/id").asText()),200);
+        a.put("areaM2",90);edited=save(url,applied,"apartment",a);
+        restored=call("POST",url+"/discard",Map.of("version",edited.at("/project/version").asLong()),200);
+        assertEquals(applied.get("data"),restored.get("data"));assertEquals(applied.get("activeEstimate"),restored.get("activeEstimate"));
+        assertEquals(restored.get("data"),call("GET",url,null,200).get("data"));
+    }
+    @Test void legacyUnappliedChangesWithoutBaselineAreNotSilentlyReplaced()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);ObjectNode a=original.at("/data/apartment").deepCopy();a.put("areaM2",80);
+        JsonNode saved=save(url,original,"apartment",a);
+        jdbc.update("update project_refinements set active_input_json=null where project_id=?",UUID.fromString(url.split("/")[3]));
+        call("POST",url+"/discard",Map.of("version",saved.at("/project/version").asLong()),400);
+        assertEquals(saved.get("data"),call("GET",url,null,200).get("data"));
+    }
+
+    @Test void editsWaitForExplicitCalculationAndReopeningNeverStartsIt()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);
+        assertEquals("not_requested",original.get("calculationStatus").asText());
+        assertFalse(original.get("activeEstimate").isNull());
+        ObjectNode apartment=original.at("/data/apartment").deepCopy();apartment.put("ceilingHeight",3);
+        org.mockito.Mockito.clearInvocations(calculator);
+        JsonNode saved=save(url,original,"apartment",apartment);
+        assertEquals("stale",saved.get("calculationStatus").asText());
+        for(int i=0;i<3;i++)assertEquals("stale",call("GET",url,null,200).get("calculationStatus").asText());
+        org.mockito.Mockito.verifyNoInteractions(calculator);
+        assertEquals(original.get("activeEstimate"),saved.get("activeEstimate"));
+        JsonNode calculated=ready(url);assertFalse(calculated.get("candidateEstimate").isNull());
+        assertEquals(original.get("activeEstimate"),calculated.get("activeEstimate"));
+        apartment.put("ceilingHeight",2.7);
+        JsonNode changed=save(url,calculated,"apartment",apartment);
+        assertEquals("stale",changed.get("calculationStatus").asText());assertTrue(changed.get("candidateEstimate").isNull());
+        assertEquals("stale",call("GET",url,null,200).get("calculationStatus").asText());
+        assertEquals(original.get("activeEstimate"),changed.get("activeEstimate"));
+    }
+
+    @Test void kitchenConfirmationIsPersistedPerKitchenWithoutChangingEstimateInputs()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);
+        ObjectNode kitchens=original.at("/data/kitchens").deepCopy();String id=kitchens.fieldNames().next();
+        ((ObjectNode)kitchens.get(id)).put("parametersConfirmed",true);
+        JsonNode saved=save(url,original,"kitchen",kitchens);
+        assertTrue(call("GET",url,null,200).at("/data/kitchens/"+id+"/parametersConfirmed").asBoolean());
+        assertEquals(original.get("revision"),saved.get("revision"));
+    }
+
+    @Test void clearedFirstBathroomNameKeepsOrdinalAndIdAfterReopening()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);
+        ArrayNode rooms=original.at("/data/rooms").deepCopy();
+        ObjectNode first=null;for(JsonNode r:rooms)if(r.get("type").asText().equals("combined_bathroom"))first=(ObjectNode)r;
+        assertNotNull(first);String firstId=first.get("id").asText();
+        ObjectNode second=first.deepCopy();second.put("id",UUID.randomUUID().toString());second.put("name","Совмещённый санузел 9");rooms.add(second);first.put("name","");
+        ObjectNode data=json.createObjectNode();data.set("rooms",rooms);data.put("roomCountManual",false);
+        JsonNode saved=save(url,original,"rooms",data);
+        JsonNode reopened=call("GET",url,null,200);
+        for(JsonNode r:reopened.at("/data/rooms"))if(r.get("id").asText().equals(firstId))assertEquals("Совмещённый санузел 1",r.get("name").asText());
+        assertEquals(saved.get("data"),reopened.get("data"));
+    }
+
+    @Test void confirmedEmptyRoomsGenerateOneBaseLayoutAndRetryCannotDuplicate()throws Exception{
+        String url=create();JsonNode original=call("GET",url,null,200);
+        var removed=new ArrayList<String>();original.at("/data/rooms").forEach(r->removed.add(r.get("id").asText()));
+        var body=Map.of("version",original.at("/project/version").asLong(),"data",Map.of("rooms",List.of(),"roomCountManual",true,"generateBaseLayout",true),"confirmedRemovals",removed);
+        JsonNode saved=call("PUT",url+"/rooms",body,200);
+        var types=new ArrayList<String>();var ids=new HashSet<String>();
+        saved.at("/data/rooms").forEach(r->{types.add(r.get("type").asText());ids.add(r.get("id").asText());});
+        assertEquals(2,Collections.frequency(types,"living"));
+        for(String type:List.of("kitchen","combined_bathroom","corridor"))assertEquals(1,Collections.frequency(types,type));
+        assertEquals(types.size(),ids.size());
+        call("PUT",url+"/rooms",body,409);
+        assertEquals(saved.get("data"),call("GET",url,null,200).get("data"));
+    }
+
     @Test void ceilingHeightAllowsTwoThroughTenAndRejectsOutsideBounds()throws Exception{
         String url=create();JsonNode original=call("GET",url,null,200);
         ObjectNode data=original.get("data").deepCopy();
         var validation=new ru.prorab.refinement.service.RefinementValidation();
-        for(String height:List.of("2","2.7","5.01","10")){
+        for(String height:List.of("2","2.7","5.1","10")){
             ((ObjectNode)data.get("apartment")).put("ceilingHeight",new java.math.BigDecimal(height));
             validation.validate(json.treeToValue(data,ru.prorab.refinement.model.RefinementData.class));
         }
-        for(String height:List.of("1.99","10.01")){
+        for(String height:List.of("1.9","10.1","2.75")){
             ((ObjectNode)data.get("apartment")).put("ceilingHeight",new java.math.BigDecimal(height));
             var value=json.treeToValue(data,ru.prorab.refinement.model.RefinementData.class);
             assertThrows(ru.prorab.common.exception.BusinessException.class,()->validation.validate(value));
@@ -158,7 +240,7 @@ class RefinementApiTest {
                 .calculate(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyLong(),org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
         ObjectNode a=original.at("/data/apartment").deepCopy();a.put("ceilingHeight",3);
         try{
-            save(url,original,"apartment",a);JsonNode failed=null;
+            JsonNode saved=save(url,original,"apartment",a);call("POST",url+"/calculate",Map.of("version",saved.at("/project/version").asLong()),200);JsonNode failed=null;
             for(int i=0;i<100;i++){failed=call("GET",url,null,200);if(failed.get("calculationStatus").asText().equals("failed"))break;Thread.sleep(20);}
             assertEquals("failed",failed.get("calculationStatus").asText());
             assertEquals(3,failed.at("/data/apartment/ceilingHeight").asInt());

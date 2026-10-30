@@ -21,6 +21,7 @@ export interface Room {
   floor: string; walls: string; ceiling: string; automatic: boolean;
 }
 export interface Kitchen {
+  parametersConfirmed?: boolean | null;
   cabinets: string; lengthM: Numeric; facade: string; countertop: string;
   stove: string | null; oven: boolean | null; refrigerator: boolean | null;
   hood: boolean | null; dishwasher: boolean | null;

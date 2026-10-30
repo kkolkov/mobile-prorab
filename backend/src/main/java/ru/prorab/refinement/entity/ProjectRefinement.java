@@ -12,6 +12,9 @@ public class ProjectRefinement {
     @Column(nullable = false) private long revision;
     @Column(columnDefinition = "text") private String activeEstimateJson;
     @Column(columnDefinition = "text") private String candidateJson;
+    @Column(columnDefinition = "text") private String activeInputJson;
+    public String getActiveInputJson(){return activeInputJson;}
+    public void setActiveInputJson(String value){activeInputJson=value;}
     private String calculationStatus = "not_requested";
     private UUID calculationId;
     private long calculationProjectVersion;

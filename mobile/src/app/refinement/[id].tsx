@@ -1,6 +1,8 @@
+import {EstimateDetails} from '../../components/EstimateDetails';
+import {hasPendingKitchens} from '../../refinement/kitchen-progress';
 import {roomName} from '../../refinement/room-name';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { View, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import { api } from '../../core/api';
@@ -10,7 +12,7 @@ import { draftsFor } from '../../core/session';
 import { amount, clone, emptyRoom, parseNumbers } from '../../core/rules';
 import { emit } from '../../core/analytics';
 import type { Draft, Room, Section, SectionData, Snapshot } from '../../core/types';
-import { Screen, Button, Card, Select, Body, Demo, ErrorText, Notice, Confirm } from '../../components/ui';
+import { Screen, Button, Card, Select, Body, ErrorText, Notice, Confirm, Heading, styles } from '../../components/ui';
 import { ApartmentForm, ExteriorsForm, KitchenForm, RoomForm, roomError, sectionError } from '../../refinement/forms';
 import { Comparison } from '../../refinement/Comparison';
 
@@ -26,6 +28,7 @@ export default function Refinement() {
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[conflict,setConflict]=useState(false);
   const [room,setRoom]=useState<Room|null>(null),[kitchenId,setKitchenId]=useState(''),[,redraw]=useState(0);
   const [confirmation,setConfirmation]=useState<{message:string;action:()=>void}|null>(null);
+  const [emptyRooms,setEmptyRooms]=useState(false),[discardOpen,setDiscardOpen]=useState(false);
   const lock=useRef(false),drafts=draftsFor(id);
   const setView=(next:string)=>{setError('');setConflict(false);router.setParams({view:next});};
   const load=useCallback(async()=>{
@@ -80,11 +83,15 @@ export default function Refinement() {
     };
     if(before?.type==='kitchen'&&edited.type!=='kitchen')setConfirmation({message:'Смена типа удалит оснащение кухни. Продолжить?',action:()=>{d.confirmedRemovals.push(before.id);done();}});else done();
   }
-  async function save() {
+  async function save(generateBaseLayout=false) {
+    if(lock.current)return;
     const key=view as Section,d=drafts[key];if(!d||!snapshot)return;
+    if(key==='rooms'&&drafts.rooms?.data.rooms.length===0&&!generateBaseLayout){setEmptyRooms(true);return;}
+    setEmptyRooms(false);
     const invalid=sectionError(key,d.data);if(invalid){setError(invalid);return;}
+    if(key==='kitchen'&&drafts.kitchen?.data[kitchenId])drafts.kitchen.data[kitchenId].parametersConfirmed=true;
     await run(async()=>{
-      const result=await api.save(id,key,{...d,data:parseNumbers(d.data)});
+      const result=await api.save(id,key,{...d,data:parseNumbers(generateBaseLayout?{...d.data,generateBaseLayout:true}:d.data)});
       if(JSON.stringify(result.data)!==JSON.stringify(snapshot.data))emit({name:'refinement_section_saved',projectId:id,section:key});
       if(!snapshot.data.completedSections.includes(key)&&result.data.completedSections.includes(key))emit({name:'refinement_section_first_saved',projectId:id,section:key});
       setSnapshot(result);delete drafts[key];setView('menu');
@@ -102,15 +109,13 @@ export default function Refinement() {
   const d=section?drafts[section]:undefined;
   const title=room?'Карточка помещения':view==='compare'?'Сравнение сметы':section?sections[section][0]:'Уточнение параметров проекта';
   return <Screen key={`${view}-${room?.id??''}`} title={title} subtitle={snapshot?.project.name} back={back} busy={busy}>
-    <Demo/>
     {!snapshot&&<><Body>Загружаем параметры проекта…</Body>{!!error&&<Button label="Повторить загрузку" onPress={load}/>}</>}
     {snapshot&&view==='menu'&&<>
-      <Body>Выберите, какие данные хотите уточнить</Body>
-      {(Object.entries(sections) as [Section,[string,string]][]).map(([key,[label,description]])=><Card key={key} title={label} description={`${description}\n${snapshot.data.updatedSections?.includes(key)?'Данные указаны и обновлены':snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}${drafts[key]?' · Есть несохранённый ввод':''}`} onPress={()=>open(key)} disabled={busy}/>)}
-      <Notice>{snapshot.calculationMessage}</Notice>
+      {(Object.entries(sections) as [Section,[string,string]][]).map(([key,[label,description]])=><Card key={key} title={label} description={`${description}\n${snapshot.data.updatedSections?.includes(key)?'Данные указаны и обновлены':snapshot.data.completedSections.includes(key)?'Данные указаны':'Не уточнено'}${(drafts[key]||(key==='kitchen'&&hasPendingKitchens(snapshot.data)))?' · Есть несохранённый ввод':''}`} onPress={()=>open(key)} disabled={busy}/>)}
+      <Notice>Чтобы увидеть новую стоимость, запустите пересчет. Текущая смета в проекте останется прежней, пока вы не примените новый результат.{'\n\n'}{snapshot.calculationMessage}</Notice>
       {snapshot.activeEstimateOutdated&&<Notice>Активная смета рассчитана по прежним параметрам. Она изменится только после применения нового расчёта.</Notice>}
-      {snapshot.calculationStatus==='ready'&&<Button label="Посмотреть расчёт" onPress={()=>setView('compare')} disabled={busy}/>}
-      {snapshot.calculationStatus!=='pending'&&<Button label={['failed','stale'].includes(snapshot.calculationStatus)?'Повторить расчёт':'Пересчитать по текущим ценам'} disabled={busy} onPress={()=>run(async()=>{setSnapshot(await api.calculate(snapshot));emit({name:'refinement_estimate_requested',projectId:id});})}/>}
+      {snapshot.calculationStatus==='pending'?<Button label="Расчёт выполняется…" disabled onPress={()=>{}}/>:(snapshot.calculationStatus==='ready'||(snapshot.calculationStatus==='not_requested'&&snapshot.activeEstimate))?<Button label="Посмотреть расчет" onPress={()=>setView('compare')} disabled={busy}/>:<Button label="Пересчитать расчет" disabled={busy} onPress={()=>run(async()=>{setSnapshot(await api.calculate(snapshot));emit({name:'refinement_estimate_requested',projectId:id});})}/>}
+
     </>}
     {section&&!d&&snapshot&&<Button label="Открыть раздел" onPress={()=>open(section)}/>}
     {d&&snapshot&&view==='apartment'&&<ApartmentForm value={drafts.apartment!.data} onChange={v=>change('apartment',v)} disabled={busy}/>}
@@ -129,14 +134,17 @@ export default function Refinement() {
     {d&&view==='exteriors'&&<ExteriorsForm value={drafts.exteriors!.data} onChange={v=>change('exteriors',v)} disabled={busy}/>}
     {snapshot&&view==='compare'&&(snapshot.candidateEstimate&&snapshot.calculationStatus==='ready'?<>
       <Comparison old={snapshot.activeEstimate} next={snapshot.candidateEstimate}/>
-      <Button label="Применить расчёт" disabled={busy||conflict} onPress={()=>run(async()=>{const result=await api.apply(snapshot);setSnapshot(result);emit({name:'refinement_estimate_applied',projectId:id});router.replace(`/project/${id}`);})}/>
-      <Button secondary label="Уточнить ещё" onPress={()=>setView('menu')} disabled={busy}/>
-    </>:<><Body>Актуальный расчёт пока не готов.</Body><Button label="К разделам" onPress={()=>setView('menu')}/></>)}
+      <Button label="Применить расчет" disabled={busy||conflict} onPress={()=>run(async()=>{const result=await api.apply(snapshot);setSnapshot(result);for(const key of Object.keys(drafts))delete drafts[key as Section];emit({name:'refinement_estimate_applied',projectId:id});router.replace(`/project/${id}`);})}/>
+      <Button secondary label="Отклонить расчет" onPress={()=>setDiscardOpen(true)} disabled={busy||conflict}/>
+      <Button secondary label="Уточнить еще" onPress={()=>setView('menu')} disabled={busy}/>
+    </>:snapshot.activeEstimate&&snapshot.calculationStatus==='not_requested'?<><Heading>Текущая смета проекта</Heading><EstimateDetails estimate={snapshot.activeEstimate} compact/><Button secondary label="К разделам" onPress={()=>setView('menu')}/></>:<><Body>Актуальный расчёт пока не готов.</Body><Button label="К разделам" onPress={()=>setView('menu')}/></>)}
     <ErrorText message={error}/>
     {conflict&&<><Notice>Данные изменены в другом сеансе. Ваш ввод сохранён в форме.</Notice><Button secondary label="Загрузить актуальную версию, сохранив мой ввод" onPress={refreshConflict} disabled={busy}/></>}
-    {section&&d&&<Button label={room?'Готово':busy?'Сохранение…':'Продолжить'} onPress={room?doneRoom:save} busy={busy} disabled={conflict}/>}
+    {section&&d&&<Button label={room?'Готово':busy?'Сохранение…':'Продолжить'} onPress={room?doneRoom:()=>void save()} busy={busy} disabled={conflict}/>}
     {!!error&&!conflict&&view==='menu'&&<Button secondary label="Обновить состояние расчёта" onPress={load} disabled={busy}/>}
-    <Button secondary label="Вернуться в проект" onPress={exit} disabled={busy}/>
+    {view!=='compare'&&<Button secondary label="Вернуться в проект" onPress={exit} disabled={busy}/>}
+    <Modal visible={emptyRooms} transparent animationType="fade" onRequestClose={()=>setEmptyRooms(false)}><View style={styles.overlay}><View style={styles.sheet}><Heading>Вы не указали ни одного помещения</Heading><Body>Если вы продолжите, калькулятор автоматически рассчитает базовую планировку (жилые комнаты, кухню, санузел и коридор) по вашей площади. Параметры можно будет добавить позднее.</Body><Button secondary label="Отмена" onPress={()=>setEmptyRooms(false)}/><Button label="Подтвердить и продолжить" disabled={busy} onPress={()=>void save(true)}/></View></View></Modal>
+    <Modal visible={discardOpen} transparent animationType="fade" onRequestClose={()=>setDiscardOpen(false)}><View style={styles.overlay}><View style={styles.sheet}><Heading>Отклонить расчет?</Heading><Body>Все уточненные данные после последнего применения расчета будут удалены. Если они понадобятся, их нужно будет вводить заново. Вы уверены?</Body><Button secondary label="Нет" onPress={()=>setDiscardOpen(false)}/><Button label="Да" disabled={busy} onPress={()=>{setDiscardOpen(false);void run(async()=>{const result=await api.discard(snapshot!);setSnapshot(result);for(const key of Object.keys(drafts))delete drafts[key as Section];router.replace(`/project/${id}`);});}}/></View></View></Modal>
     {confirmation&&<Confirm message={confirmation.message} onCancel={()=>setConfirmation(null)} onConfirm={()=>{confirmation.action();setConfirmation(null);}}/>}
   </Screen>;
 }

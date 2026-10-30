@@ -22,7 +22,8 @@ public record RefinementData(Apartment apartment, List<Room> rooms, boolean room
     public record Room(UUID id, String type, String name, BigDecimal areaM2,
                        String floor, String walls, String ceiling, boolean automatic) {}
     public record Kitchen(String cabinets, BigDecimal lengthM, String facade, String countertop,
-                          String stove, Boolean oven, Boolean refrigerator, Boolean hood, Boolean dishwasher) {
+                          String stove, Boolean oven, Boolean refrigerator, Boolean hood, Boolean dishwasher, Boolean parametersConfirmed) {
+        public Kitchen(String cabinets,BigDecimal lengthM,String facade,String countertop,String stove,Boolean oven,Boolean refrigerator,Boolean hood,Boolean dishwasher){this(cabinets,lengthM,facade,countertop,stove,oven,refrigerator,hood,dishwasher,null);}
         public static Kitchen defaults() { return new Kitchen("unknown", null, "unknown", "unknown", null, null, null, null, null); }
     }
     public record Exterior(BigDecimal areaM2, String glazing, String insulation, String floor,

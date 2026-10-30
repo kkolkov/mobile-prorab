@@ -40,10 +40,10 @@ test('deployed JAR: same-origin registration, project persistence and private AP
     await page.getByRole('button',{name:'Продолжить',exact:true}).click();await page.locator('[data-value="comfort"]').click();
     await page.getByRole('button',{name:'Получить оценку',exact:true}).click();
     await page.getByText('1 мес. 11 дн. — 1 мес. 20 дн.',{exact:true}).waitFor();
-    await page.getByText('Подробности расчёта',{exact:true}).click();
-    await page.getByText('Черновые материалы:',{exact:false}).waitFor();
+    await page.getByText('Состав оценки',{exact:true}).click();
+    await page.getByText('Стоимость материалов',{exact:true}).waitFor();
     assert.ok(await page.locator('.estimate-details tbody tr').count()>0);
-    await page.getByText('Подробности расчёта',{exact:true}).click();
+    await page.getByText('Состав оценки',{exact:true}).click();
     await page.getByRole('button',{name:'Перейти в проект',exact:true}).click();
     await page.getByRole('heading',{name:'Планирование',exact:true}).waitFor();
     const durationBox=await page.getByText('1 мес. 11 дн. — 1 мес. 20 дн.',{exact:true}).boundingBox();

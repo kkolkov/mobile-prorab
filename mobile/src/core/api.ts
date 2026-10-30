@@ -27,5 +27,6 @@ export const api = {
   refinement: (id: string) => request<Snapshot>(`/projects/${id}/refinement`),
   save: (id: string, section: Section, body: unknown) => request<Snapshot>(`/projects/${id}/refinement/${section}`, body, 'PUT'),
   calculate: (s: Snapshot) => request<Snapshot>(`/projects/${s.project.projectId}/refinement/calculate`, {version: s.project.version}),
+  discard: (s: Snapshot) => request<Snapshot>(`/projects/${s.project.projectId}/refinement/discard`, {version:s.project.version}),
   apply: (s: Snapshot) => request<Snapshot>(`/projects/${s.project.projectId}/refinement/apply`, {version: s.project.version, estimateId: s.candidateEstimate?.id}),
 };

@@ -1,18 +1,24 @@
+import {useState} from 'react';
+import {Modal,View} from 'react-native';
 import { choices } from '../core/choices';
-import { Body, Grid, Check, Field, Heading, Select, Button } from '../components/ui';
+import { Body, Grid, Check, Field, Heading, Select, Button, styles } from '../components/ui';
 import type { Apartment, Exterior, Kitchen, Room, SectionData } from '../core/types';
 import { numberError } from '../core/rules';
 
 type Props<T>={value:T;onChange:(next:T)=>void;disabled:boolean};
 const labels={floor:'Пол',walls:'Стены',ceiling:'Потолок',doors:'Межкомнатные двери',demolition:'Демонтаж отделки',wallPreparation:'Подготовка стен',floorPreparation:'Подготовка пола',electrical:'Электрика'};
+function InfoHeading({title,text}:{title:string;text:string}){
+ const [open,setOpen]=useState(false);
+ return <><View style={{flexDirection:'row',alignItems:'center',gap:8}}><Heading>{title}</Heading><Button secondary label={`${title}: пояснение`} displayLabel="ⓘ" onPress={()=>setOpen(true)}/></View><Modal visible={open} transparent animationType="fade" onRequestClose={()=>setOpen(false)}><View style={styles.overlay}><View style={styles.sheet}><Heading>{title}</Heading><Body>{text}</Body><Button label="Понятно" onPress={()=>setOpen(false)}/></View></View></Modal></>;
+}
 export function ApartmentForm({value:a,onChange,disabled}:Props<Apartment>) {
   return <>
     <Grid>{(['currentState','targetState','finishLevel'] as const).map((key,i)=><Select key={key} label={['Текущее состояние квартиры','Желаемый результат ремонта','Уровень ремонта'][i]} value={a[key]} options={choices[key]} hiddenOptions={key==='targetState'?['fully_furnished']:[]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
     <Field label="Площадь квартиры, м² — без балкона и лоджии" value={a.areaM2} onChange={v=>onChange({...a,areaM2:v})} numeric required disabled={disabled}/>
-    <Field label="Высота потолков, м" value={a.ceilingHeight} onChange={v=>onChange({...a,ceilingHeight:v})} numeric scale={2} min={2} max={10} disabled={disabled} placeholder="По умолчанию: 2,7 м"/>
-    <Heading>Общая отделка</Heading><Select label="Нужна перепланировка?" value={String(a.redevelopment??false)} options={{true:'Да',false:'Нет'}} onChange={v=>onChange({...a,redevelopment:v==='true'})} disabled={disabled}/><Body>Для комнат, кухни и коридора. Индивидуальная отделка имеет приоритет. Санузлы используют отдельные нормативы.</Body>
+    <Field label="Высота потолков, м" value={a.ceilingHeight} onChange={v=>onChange({...a,ceilingHeight:v})} numeric scale={1} min={2} max={10} hint="От 2 до 10 м, не более одного знака после запятой." disabled={disabled} placeholder="По умолчанию: 2,7 м"/>
+    <Select label="Нужна перепланировка?" value={String(a.redevelopment??false)} options={{true:'Да',false:'Нет'}} onChange={v=>onChange({...a,redevelopment:v==='true'})} disabled={disabled}/><InfoHeading title="Общая отделка" text="Если параметр не выбран, калькулятор автоматически закладывает базовый вариант: ламинат, обои, натяжной потолок и стандартные межкомнатные двери."/>
     <Grid>{(['floor','walls','ceiling','doors'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
-    <Heading>Работы</Heading>
+    <InfoHeading title="Работы" text="При отсутствии выбора применяются стандартные нормативы: демонтаж и подготовка поверхностей включаются в смету, если они требуются для выбранного состояния квартиры. Электрика рассчитывается по базовым нормам (розетки, кабель)."/>
     <Grid>{(['demolition','wallPreparation','floorPreparation','electrical'] as const).map(key=><Select key={key} label={labels[key]} value={a[key]} options={choices[key]} onChange={v=>onChange({...a,[key]:v})} disabled={disabled}/>)}</Grid>
   </>;
 }
@@ -21,7 +27,11 @@ export function RoomForm({value:r,onChange,disabled}:Props<Room>) {
   return <><Select label="Тип помещения" value={r.type} options={choices.type} onChange={v=>onChange({...r,type:v})} disabled={disabled}/>
     <Field label="Название помещения · необязательно" value={r.name} onChange={v=>onChange({...r,name:v})} disabled={disabled}/>
     <Field label="Площадь помещения, м²" value={r.areaM2} onChange={v=>onChange({...r,areaM2:v})} numeric disabled={disabled}/>
-    {(['floor','walls','ceiling'] as const).map(key=><Select key={key} label={labels[key]} value={r[key]} options={{inherit,...choices[key]}} onChange={v=>onChange({...r,[key]:v})} disabled={disabled}/>)}
+    {(['floor','walls','ceiling'] as const).map(key=>{
+      const wet=['combined_bathroom','bathroom','toilet'].includes(r.type);
+      const options=wet&&key==='floor'?{[r.floor==='tile'?'tile':'inherit']:'Плитка',...Object.fromEntries(Object.entries(choices.floor).filter(([value])=>value!=='tile'))}:wet&&key==='ceiling'?{[r.ceiling==='stretch'?'stretch':'inherit']:'Натяжной',...Object.fromEntries(Object.entries(choices.ceiling).filter(([value])=>value!=='stretch'))}:{inherit:wet&&key==='walls'?'Плитка':inherit,...choices[key]};
+      return <Select key={key} label={labels[key]} value={r[key]} options={options} onChange={v=>onChange({...r,[key]:v})} disabled={disabled}/>;
+    })}
   </>;
 }
 export function KitchenForm({value:k,onChange,disabled,equipped}:Props<Kitchen>&{equipped:boolean}) {
@@ -58,7 +68,7 @@ export function roomError(room:Room) {
 export function sectionError<K extends keyof SectionData>(key:K,value:SectionData[K]):string {
   if(key==='apartment') {
     const a=value as Apartment;
-    return numberError(a.areaM2,true)||numberError(a.ceilingHeight,false,2,2,10);
+    return numberError(a.areaM2,true)||numberError(a.ceilingHeight,false,1,2,10);
   }
   if(key==='rooms') return (value as SectionData['rooms']).rooms.map(roomError).find(Boolean)??'';
   if(key==='kitchen') return Object.values(value as SectionData['kitchen']).filter(k=>k.cabinets==='new').map(k=>numberError(k.lengthM)).find(Boolean)??'';

@@ -142,6 +142,7 @@ class ExecutionApiTest {
   s=command(path,"expense",s,Map.of("expenseId",UUID.randomUUID(),"title","Оплата","amount",100,"category","labor","date",LocalDate.now().toString(),"taskId","rough"));
   var old=s.deepCopy();var r=call(ref,null,200);var apartment=(com.fasterxml.jackson.databind.node.ObjectNode)r.at("/data/apartment").deepCopy();apartment.put("areaM2",70);
   r=put(ref+"/apartment",Map.of("version",r.at("/project/version").asLong(),"data",apartment));
+  r=call(ref+"/calculate",Map.of("version",r.at("/project/version").asLong()),200);
   for(int i=0;i<100&&r.get("calculationStatus").asText().equals("pending");i++){Thread.sleep(30);r=call(ref,null,200);}
   assertEquals("ready",r.get("calculationStatus").asText());assertEquals(old.get("planBudget"),call(path,null,200).get("planBudget"));
   call(ref+"/apply",Map.of("version",r.at("/project/version").asLong(),"estimateId",r.at("/candidateEstimate/id").asText()),200);

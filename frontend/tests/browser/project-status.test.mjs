@@ -19,6 +19,12 @@ test('Project status popup does not move layout and respects schedule start',asy
   });
   for(const width of [1280,390]){
    await page.setViewportSize({width,height:900});await render();
+   assert.deepEqual(await page.locator('.estimate-details > summary').allTextContents(),['Состав оценки','Сроки выполнения работ','Дополнительно']);
+   assert.equal(await page.locator('.estimate-details[open]').count(),0);
+   await page.locator('.estimate-additional > summary').click();
+   assert.equal(await page.getByRole('heading',{name:'Источники цен',exact:true}).isVisible(),true);
+   assert.equal(await page.getByRole('heading',{name:'Ограничения расчета',exact:true}).isVisible(),true);
+   await page.locator('.estimate-additional > summary').click();
    const block=page.locator('.project-planning');const before=await block.boundingBox();
    await page.locator('#status-info').click();assert.equal(await page.locator('#status-popup').isVisible(),true);
    assert.deepEqual(await block.boundingBox(),before);

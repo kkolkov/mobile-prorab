@@ -290,3 +290,6 @@ body:has(.project-grid) #app > .shell > .top { display:none; }
 .status-info { padding: 8px; min-width: 40px; min-height: 40px; background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 20px; }
 .status-info[hidden] { display: none; }
 #status-popup p { margin: 16px 0 24px; }
+
+.refinement-info-heading { display: flex; align-items: center; gap: 8px; margin: 24px 0 16px; }
+.refinement-info-heading h2 { margin: 0; }

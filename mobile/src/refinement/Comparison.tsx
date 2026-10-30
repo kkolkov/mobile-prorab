@@ -1,20 +1,14 @@
 import {EstimateDetails} from '../components/EstimateDetails';
-import { View } from 'react-native';
-import { Heading, Body, Notice } from '../components/ui';
-import { rub } from '../core/rules';
-import type { Estimate, Totals } from '../core/types';
-
-export function Comparison({old,next}:{old:Estimate|null;next:Estimate}) {
-  const groups:[string,Totals|null|undefined,Totals|null][]=[['Общая сумма',old?.total,next.total],['Ремонт',old?.repair,next.repair],['Кухня и техника',old?.kitchen,next.kitchen]];
-  const metrics:[keyof Totals,string][]=[['min','Минимум'],['max','Максимум'],['expected','Расчётная стоимость'],['withReserve','Бюджет с резервом']];
-  const value=(totals:Totals|null|undefined,key:keyof Totals)=>totals?(key==='withReserve'?(totals.withReserve??Math.round(totals.max*1.1)):totals[key]):null;
-  return <><Body>Бюджет с резервом включает запас сверх максимума по настройкам на момент расчёта. В каждой колонке показаны сохранённые значения своей сметы. Сохранённая смета изменится только после применения расчёта.</Body>{groups.map(([label,a,b])=><View key={label} style={{gap:12}}><Heading>{label}</Heading>
-    {metrics.map(([key,title])=><Notice key={key}>{title}{'\n'}Текущая: {rub(value(a,key))}{'\n'}Уточнённая: {rub(value(b,key))}{'\n'}Разница: {a&&b?rub(value(b,key)!-value(a,key)!):'Нет данных'}</Notice>)}
-  </View>)}<Body>В составе ремонта: балкон {rub(next.balconyIncluded)}, лоджия {rub(next.loggiaIncluded)}. Повторно к итогу не прибавляются.</Body>
-    <Body>Новый расчёт включает ориентировочный срок по этапам. Он применяется вместе со сметой; начатый график сохраняет фактический ход работ.</Body>
-    <EstimateDetails estimate={next}/><Heading>Причины изменения</Heading>{next.reasons.map((text,i)=><Body key={i}>• {text}</Body>)}
-    {old&&(old.pricingVersion!==next.pricingVersion||old.algorithmVersion!==next.algorithmVersion)&&<Notice>Изменилась версия цен или алгоритма.</Notice>}
-    <Body>Цены: {next.pricingVersion}. Алгоритм: {next.algorithmVersion}.</Body>
-    <Heading>Допущения</Heading>{[...new Set([...(old?.assumptions??[]),...next.assumptions])].map((text,i)=><Body key={i}>• {text}</Body>)}
-  </>;
+import {Text,View,useWindowDimensions} from 'react-native';
+import {Body,palette} from '../components/ui';
+import {rub} from '../core/rules';
+import type {Estimate} from '../core/types';
+export function Comparison({old,next}:{old:Estimate|null;next:Estimate}){
+ const {width}=useWindowDimensions();const narrow=width<640;
+ return <><Body>Параметры изменились. Ниже указана новая стоимость. Текущая смета останется прежней, пока вы не подтвердите изменения.</Body>
+ <View style={{gap:12}}>{!narrow&&<View style={{flexDirection:'row'}}>{['Показатель','Было','Стало','Разница'].map(t=><Text key={t} style={{flex:1,color:palette.muted}}>{t}</Text>)}</View>}
+ {([['expected','Расчетная стоимость'],['withReserve','Бюджет с резервом']] as const).map(([key,label])=>{
+  const a=old?.total?.[key],b=next.total?.[key],diff=a==null||b==null?null:b-a;
+  return <View key={key} style={{flexDirection:narrow?'column':'row',gap:12,paddingVertical:12,borderBottomWidth:1,borderColor:palette.line}}><View style={narrow?undefined:{flex:1}}><Body>{label}</Body></View><View style={{flexDirection:'row',flex:narrow?undefined:3,gap:8}}>{[['Было',rub(a)],['Стало',rub(b)],['Разница',diff==null?'Нет данных':(diff>0?'+':'')+rub(diff)]].map(([title,value])=><View key={title} style={{flex:1,minWidth:0}}>{narrow&&<Text style={{fontSize:12,color:palette.muted}}>{title}</Text>}<Body>{value}</Body></View>)}</View></View>;
+ })}</View><EstimateDetails estimate={next} compact/></>;
 }

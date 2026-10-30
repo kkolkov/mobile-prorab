@@ -15,7 +15,7 @@ public class RefinementValidation {
         if(a==null||a.currentState()==null||a.targetState()==null||a.finishLevel()==null)fail("Укажите состояния квартиры и уровень ремонта");
         number(a.areaM2(),1,true,"Площадь квартиры");
         if(a.areaM2().precision()-a.areaM2().scale()>9)fail("Площадь квартиры слишком велика");
-        number(a.ceilingHeight(),2,false,"Высота потолков");
+        number(a.ceilingHeight(),1,false,"Высота потолков");
         if(a.ceilingHeight()!=null&&(a.ceilingHeight().compareTo(new BigDecimal("2"))<0||a.ceilingHeight().compareTo(new BigDecimal("10"))>0))fail("Высота потолков: от 2 до 10 м");
         materials(a.floor(),a.walls(),a.ceiling(),false);
         choice(a.doors(),"unknown","standard","concealed");

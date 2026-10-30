@@ -32,7 +32,7 @@ export default function Dashboard() {
       <View><Button label="Уточнить параметры проекта" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/></View></View>
       <Modal visible={showInfo&&status!=='В работе'} transparent animationType="fade" onRequestClose={()=>setShowInfo(false)}><View style={styles.overlay}><View style={styles.sheet}><Heading>О статусе проекта</Heading><Body>Статус изменится на &quot;В работе&quot; автоматически, как только в графике работ наступит дата начала. Вы можете указать ее в разделе &quot;График работ&quot;</Body><Button label="Понятно" onPress={()=>setShowInfo(false)}/></View></View></Modal>
       {p.budgetMinRub==null&&<Button secondary label="Повторить расчёт" disabled={busy} onPress={()=>router.push(`/refinement/${id}`)}/>}
-      <EstimateDetails estimate={p.estimateDetails}/><Heading>Инструменты проекта</Heading><Grid><Button label="График работ" onPress={()=>router.push(`/execution/${id}?tab=schedule`)}/><Button label="Финансовый трекер" secondary onPress={()=>router.push(`/execution/${id}?tab=finance`)}/></Grid>
+      <EstimateDetails estimate={p.estimateDetails} compact/><Heading>Инструменты проекта</Heading><Grid><Button label="График работ" onPress={()=>router.push(`/execution/${id}?tab=schedule`)}/><Button label="Финансовый трекер" secondary onPress={()=>router.push(`/execution/${id}?tab=finance`)}/></Grid>
     </>}<ErrorText message={error}/>{!!error&&<Button label="Повторить" disabled={busy} onPress={load}/>}
   </Screen>;
 }

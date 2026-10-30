@@ -61,10 +61,7 @@ public class RefinementService {
                     if(r==null||r.id()==null||r.type()==null)throw new BusinessException("Укажите идентификатор и тип помещения");
                     String name=r.name()==null?"":r.name().trim();
                     if(name.isEmpty()) {
-                        UUID roomId=r.id();
-                        var peers=new ArrayList<Room>(input.rooms().stream().filter(x->x!=null&&x.id()!=null&&!x.id().equals(roomId)&&x.name()!=null&&!x.name().isBlank()).toList());
-                        peers.addAll(rooms);
-                        name=RoomNames.next(r.type(),peers);
+                        name=RoomNames.forRoom(r,input.rooms());
                     }
                     r=new Room(r.id(),r.type(),name,r.areaM2(),r.floor(),r.walls(),r.ceiling(),r.automatic());
                     Room before=prior.get(r.id());boolean automatic=before!=null&&before.automatic()&&sameRoom(before,r);
@@ -78,6 +75,14 @@ public class RefinementService {
                     boolean removed=rooms.stream().noneMatch(r->r.id().equals(before.id())&&r.type().equals(before.type()));
                     boolean equipped=before.type().equals("kitchen")&&!Objects.equals(kitchens.get(before.id()),Kitchen.defaults());
                     if(removed&&(!emptyAutomatic(before)||equipped)&&!confirmed.contains(before.id()))throw new BusinessException("Подтвердите удаление заполненного помещения и его оснащения");
+                }
+                if(input.generateBaseLayout()){
+                    if(!rooms.isEmpty())throw new BusinessException("Базовую планировку можно создать только для пустого списка помещений");
+                    resize(rooms,recommended(apartment.areaM2()));
+                    rooms.add(room("kitchen","Кухня 1"));
+                    rooms.add(room("combined_bathroom","Санузел 1"));
+                    rooms.add(room("corridor","Коридор 1"));
+                    manual=false;
                 }
                 Set<UUID> kitchenIds=new HashSet<>();rooms.stream().filter(r->r.type().equals("kitchen")).forEach(r->kitchenIds.add(r.id()));
                 kitchens.keySet().retainAll(kitchenIds);kitchenIds.forEach(k->kitchens.putIfAbsent(k,Kitchen.defaults()));
@@ -108,7 +113,7 @@ public class RefinementService {
         if(calculationChanged){record.incrementRevision();if(p.getEstimateStatus()==EstimateStatus.READY)p.setEstimateStatus(EstimateStatus.STALE);}
         p.setUpdatedAt(Instant.now());projects.saveAndFlush(p);
         record.setCalculationProjectVersion(p.getVersion());
-        if(calculationChanged)requestCalculation(p,record,changed,allocation);
+        if(calculationChanged){record.setCandidateJson(null);record.setCalculationId(null);record.setCalculationStatus(allocation.complete()?"stale":"incomplete");}
         refinements.saveAndFlush(record);
         return response(p,record);
     }
@@ -145,10 +150,23 @@ public class RefinementService {
         checkVersion(p,version);RefinedEstimate candidate=readNullable(r.getCandidateJson());
         if(candidate==null||!candidate.id().equals(estimateId)||candidate.revision()!=r.getRevision()||!r.getCalculationStatus().equals("ready")||r.getCalculationProjectVersion()!=p.getVersion())throw new BusinessException("Применить можно только актуальный полный расчёт");
         r.setActiveEstimateJson(write(candidate));
+        r.setActiveInputJson(r.getInputJson());
         p.setEstimateDetailsJson(write(candidate));
         p.setBudgetMinRub(candidate.total().min().intValueExact());p.setBudgetMaxRub(candidate.total().max().intValueExact());
         if(candidate.durationMinDays()!=null){p.setDurationMinDays(candidate.durationMinDays());p.setDurationMaxDays(candidate.durationMaxDays());}
         p.setEstimateStatus(EstimateStatus.READY);p.setStatus(ProjectStatus.ACTIVE);p.setUpdatedAt(Instant.now());projects.saveAndFlush(p);
+        r.setCalculationProjectVersion(p.getVersion());refinements.saveAndFlush(r);
+        return response(p,r);
+    }
+    @Transactional
+    public RefinementResponse discard(UUID id,long version){
+        Project p=project(id);checkVersion(p,version);ProjectRefinement r=prepare(p);
+        if(r.getActiveInputJson()==null)throw new BusinessException("Для старых уточнений исходные параметры не сохранены. Автоматически отменить их нельзя; текущая смета не изменена.");
+        RefinementData original=read(r.getActiveInputJson(),RefinementData.class);
+        r.setInputJson(r.getActiveInputJson());r.setCandidateJson(null);r.setCalculationId(null);r.incrementRevision();r.setCalculationStatus("not_requested");
+        updateProject(p,original);
+        p.setEstimateStatus(r.getActiveEstimateJson()==null?EstimateStatus.FAILED:EstimateStatus.READY);
+        p.setUpdatedAt(Instant.now());projects.saveAndFlush(p);
         r.setCalculationProjectVersion(p.getVersion());refinements.saveAndFlush(r);
         return response(p,r);
     }
@@ -159,10 +177,14 @@ public class RefinementService {
         events.publishEvent(new Calculation(p.getProjectId(),r.getCalculationId(),r.getRevision(),d,allocation));
     }
     private ProjectRefinement prepare(Project p){
-        var existing=refinements.findById(p.getProjectId());if(existing.isPresent())return existing.get();
+        var existing=refinements.findById(p.getProjectId());if(existing.isPresent()){
+            var record=existing.get();
+            if(record.getActiveInputJson()==null&&p.getEstimateStatus()==EstimateStatus.READY)record.setActiveInputJson(record.getInputJson());
+            return record;
+        }
         if(p.getCompletedStep()<5)throw new BusinessException("Сначала завершите создание проекта");
         RefinementData d=new InitialRefinementData().from(p);
-        ProjectRefinement r=new ProjectRefinement(p.getProjectId(),write(d));r.setCalculationProjectVersion(p.getVersion());
+        ProjectRefinement r=new ProjectRefinement(p.getProjectId(),write(d));r.setActiveInputJson(write(d));r.setCalculationProjectVersion(p.getVersion());
         if(p.getEstimateDetailsJson()!=null){
             r.setActiveEstimateJson(p.getEstimateDetailsJson());
         }else if(p.getBudgetMinRub()!=null&&p.getBudgetMaxRub()!=null){
@@ -198,7 +220,7 @@ public class RefinementService {
         for(int i=rooms.size()-1;i>=0&&current>count;i--)if(rooms.get(i).type().equals("living")&&emptyAutomatic(rooms.get(i))){rooms.remove(i);current--;}
     }
     private Room room(String type,String name){return new Room(UUID.randomUUID(),type,name,null,"inherit","inherit","inherit",true);}
-    private JsonNode calculationInput(RefinementData d){ObjectNode tree=json.valueToTree(d);tree.remove(List.of("completedSections","updatedSections","roomCountManual"));((ArrayNode)tree.get("rooms")).forEach(r->((ObjectNode)r).remove(List.of("name","automatic")));return tree;}
+    private JsonNode calculationInput(RefinementData d){ObjectNode tree=json.valueToTree(d);tree.remove(List.of("completedSections","updatedSections","roomCountManual"));((ArrayNode)tree.get("rooms")).forEach(r->((ObjectNode)r).remove(List.of("name","automatic")));tree.get("kitchens").elements().forEachRemaining(k->((ObjectNode)k).remove("parametersConfirmed"));return tree;}
     private Project project(UUID id){return projects.findForUpdate(id).orElseThrow(()->new ResourceNotFoundException("Проект не найден"));}
     private void checkVersion(Project p,Long version){if(version==null||p.getVersion()!=version)throw new ObjectOptimisticLockingFailureException(Project.class,p.getProjectId());}
     private String write(Object value){try{return json.writeValueAsString(value);}catch(JsonProcessingException ex){throw new IllegalStateException("Cannot serialize refinement",ex);}}

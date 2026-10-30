@@ -20,6 +20,8 @@ test('Preliminary estimate: compact totals, collapsed sources and readable time 
     Object.assign(state,{step:6,projectId:'test',loading:false,error:'',project:{projectId:'test',name:'Ремонт квартиры',areaM2:60,roomsCount:2,bathroomsCount:1,estimateStatus:'ready',durationMinDays:30,durationMaxDays:36,budgetMinRub:90,budgetMaxRub:115,estimateDetails:{durationMaxDays:36,pricingVersion:'test',algorithmVersion:'test',details,assumptions:['Проверочное длинное пояснение'],timePlan:{totalDays:30,phases:[{id:'rough',durationDays:10},{id:'drying',title:'Технологическая пауза',durationDays:8},{id:'finishing',durationDays:8},{id:'assembly',durationDays:4}],workloads:[{code:'plaster_wall',title:'Штукатурка стен',phase:'rough',quantityM2:130,personHours:96,personHoursPer100m2:74}]}}}});
     (await import('/js/app.js')).render();
    });
+   assert.equal(await page.locator('.estimate-summary').isVisible(),false);
+   await page.locator('.cost-summary > summary').click();
    assert.equal(await page.locator('.estimate-summary tbody tr').count(),4);
    const summary=await page.locator('.estimate-overview').boundingBox(),parameters=await page.locator('.estimate-parameters').boundingBox();
    assert.ok(Math.abs(summary.width-parameters.width)<2);
@@ -35,7 +37,7 @@ test('Preliminary estimate: compact totals, collapsed sources and readable time 
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
    await page.screenshot({path:`/tmp/prorab-compact-${width}.png`,fullPage:true});
    await page.locator('.time-summary > summary').click();
-   await page.getByText('Подробности расчёта',{exact:true}).click();
+   await page.getByText('Дополнительно',{exact:true}).click();
    assert.equal(await page.getByRole('heading',{name:'Ограничения расчета',exact:true}).isVisible(),true);
   }
  }finally{await browser.close();}

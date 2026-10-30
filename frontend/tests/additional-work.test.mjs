@@ -9,6 +9,15 @@ test('Additional work: apartment area includes 5 and 9999, rejects out-of-range 
 test('Additional work: blank room name uses next type ordinal, custom names remain intact',()=>{
  const kitchen={id:'new',type:'kitchen',name:''};const peers=[{id:'1',type:'kitchen',name:'Кухня 1'},{id:'2',type:'living',name:'Жилая комната 10'}];
  assert.equal(roomName(kitchen,peers,{kitchen:'Кухня'}),'Кухня 2');
- assert.equal(roomName(kitchen,[...peers,{id:'3',type:'kitchen',name:'Кухня 4'}],{kitchen:'Кухня'}),'Кухня 5');
+ assert.equal(roomName(kitchen,[...peers,{id:'3',type:'kitchen',name:'Кухня 4'}],{kitchen:'Кухня'}),'Кухня 3');
  assert.equal(roomName({...kitchen,name:'Моя кухня'},peers,{kitchen:'Кухня'}),'Моя кухня');
+});
+
+test('Clearing an existing room name uses its position among its type and keeps IDs',()=>{
+ const rooms=[{id:'bath1',type:'combined_bathroom',name:'Санузел 1'},{id:'living',type:'living',name:'Комната 7'},{id:'bath2',type:'combined_bathroom',name:'Совмещённый санузел 9'}];
+ const labels={combined_bathroom:'Совмещённый санузел'};
+ assert.equal(roomName({...rooms[0],name:''},rooms,labels),'Совмещённый санузел 1');
+ assert.equal(roomName({...rooms[2],name:''},rooms,labels),'Совмещённый санузел 2');
+ assert.equal(roomName({...rooms[2],name:''},rooms.slice(1),labels),'Совмещённый санузел 1');
+ assert.equal(rooms[0].id,'bath1');
 });

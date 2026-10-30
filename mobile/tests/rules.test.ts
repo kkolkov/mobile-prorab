@@ -8,7 +8,7 @@ test('AC-01/02: area accepts comma and one decimal, rejects empty/zero/negative/
   for(const value of ['',null,'0','-3','abc','3.22','4.9','10000','5.01'])assert.equal(validArea(value),false,String(value));
   for(const value of ['5','9999','33','68,5','68.5'])assert.equal(validArea(value),true);
   assert.equal(autoName('68,5'),'Ремонт квартиры 68.5 м²');
-  assert.ok(numberError('1.99',false,2,2,5));assert.equal(numberError('2,75',false,2,2,5),'');
+  for(const value of ['1.9','10.1','2,75'])assert.ok(numberError(value,false,1,2,10));for(const value of ['2','2,7','10'])assert.equal(numberError(value,false,1,2,10),'');
 });
 test('AC-03 amended: custom wording survives, only area suffix changes',()=>{
   assert.equal(updateNameArea('Ремонт МОЕЙ квартиры 33 м²','38'),'Ремонт МОЕЙ квартиры 38 м²');

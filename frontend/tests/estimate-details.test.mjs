@@ -13,8 +13,8 @@ test('Compact estimate shows stored categories and keeps technical details colla
  const estimate={pricingVersion:'test',assumptions:['Длинное пояснение'],details:{roughMaterials:10,finishMaterials:20,labor:40,lines:[],groups:[{code:'rough',title:'Черновые работы',description:'Демонтаж',laborRub:40,materialsRub:30,totalRub:70}]}};
  const html=estimateDetails(estimate,{compact:true});
  assert.ok(html.includes('Стоимость работ'));assert.ok(html.includes('Стоимость материалов'));assert.ok(html.includes('Черновые работы'));assert.ok(html.includes('ИТОГО'));
- assert.ok(html.indexOf('estimate-summary')<html.indexOf('<details'));
- assert.ok(html.includes('<summary>Подробности расчёта</summary>'));assert.ok(!html.includes('<details open'));
+ assert.ok(html.includes('<summary>Состав оценки</summary>'));
+ assert.ok(html.includes('<summary>Дополнительно</summary>'));assert.ok(!html.includes('Подробности расчёта'));assert.ok(!html.includes('Трудозатраты по нормам'));assert.ok(!html.includes('<details open'));
  const legacy=estimateDetails({...estimate,details:{...estimate.details,groups:null}},{compact:true});
  assert.ok(legacy.includes('нет разбивки по разделам'));assert.ok(!legacy.includes('<th scope="row">Черновые работы'));assert.ok(legacy.includes('70 ₽'));
 });
