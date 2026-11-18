@@ -56,7 +56,6 @@ public final class TimePlanner {
   if(preparation){add(phases,"drying","Технологическая пауза",8);notes.add("Технологическая пауза 8 календарных дней сохранена как прежнее допущение: файл исключает сушку и набор прочности. Фактическая готовность определяется материалами и условиями; 8 дней не являются нормативом готовности стяжки.");}
   int finishing=phaseDays("finishing",hours,unknown,days(area,"0.3",7),notes);
   if(finishing>0)add(phases,"finishing","Чистовая отделка",finishing);
-  // Finishing installation and cleanup have no supplied time norms.
   unknown.computeIfAbsent("assembly",k->new TreeSet<>()).add("уборка");
   add(phases,"assembly","Финишный монтаж и уборка",phaseDays("assembly",hours,unknown,4,notes));
   notes.add("Верхняя граница срока — нижняя ×1,2 с округлением вверх: прежний оценочный запас, не доверительный интервал. Доставка и ожидание поставок не нормированы.");

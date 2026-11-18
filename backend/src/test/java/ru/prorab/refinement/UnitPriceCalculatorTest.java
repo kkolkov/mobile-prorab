@@ -103,7 +103,7 @@ class UnitPriceCalculatorTest {
     }
     @Test void removingImportedRateFailsOnlyWhenItIsNeededAndDoesNotUseLegacyFallback(){
         jdbc.update("delete from price_matrix where code='ref.K_tech6_budget'");entityManager.clear();
-        assertNotNull(calc(data(Kitchen.defaults(),none()))); // Microwave is not offered in the current form.
+        assertNotNull(calc(data(Kitchen.defaults(),none())));
         jdbc.update("delete from price_matrix where code='average.material.laminate'");entityManager.clear();
         assertThrows(IllegalStateException.class,()->calc(data(Kitchen.defaults(),none())));
     }
@@ -112,7 +112,7 @@ class UnitPriceCalculatorTest {
         var rooms=List.of(new Room(UUID.randomUUID(),"living","А",new BigDecimal("20"),"vinyl","inherit","inherit",false),new Room(UUID.randomUUID(),"living","Б",new BigDecimal("48"),"vinyl","inherit","inherit",false));
         var result=calc(new RefinementData(a,rooms,false,Map.of(),none(),Set.of()));
         var underlay=result.details().lines().stream().filter(l->l.priceCode().equals("ref.F_underlay_spc")).toList();
-        assertEquals(1,underlay.size());assertEquals(0,underlay.getFirst().quantity().compareTo(new BigDecimal("8"))); // ceil(68 * 1.05 / 10), not 3 + 6 separate purchases.
+        assertEquals(1,underlay.size());assertEquals(0,underlay.getFirst().quantity().compareTo(new BigDecimal("8")));
         assertEquals(0,underlay.getFirst().coefficient().compareTo(BigDecimal.ONE));
     }
     @Test void newPreparationRatesStillProduceRoughAndDryingPhases(){
@@ -151,7 +151,6 @@ class UnitPriceCalculatorTest {
                     new Room(UUID.randomUUID(),"living","Комната",new BigDecimal("64"),"inherit","inherit","inherit",true));
                 var result=calc(new RefinementData(a,rooms,false,Map.of(),none(),Set.of()));
                 var line=result.details().lines().stream().filter(l->l.name().equals("Санузел: стены: материалы")).findFirst().orElseThrow();
-                // Explicit operation prices replace the old tile/paint multiplier; class applies only to materials.
                 assertEquals(0,line.coefficient().compareTo(new BigDecimal("1.3")),type+" / "+wall);
                 var living=result.details().lines().stream().filter(l->l.name().equals("Комната: стены: материалы")).findFirst().orElseThrow();
                 assertEquals(0,living.coefficient().compareTo(new BigDecimal("1.3")));
@@ -169,7 +168,7 @@ class UnitPriceCalculatorTest {
     @Test void databasePriceChangeAffectsOnlyNewSnapshots(){
         var input=data(Kitchen.defaults(),none());var before=calc(input);
         jdbc.update("update price_matrix set unit_price_rub=unit_price_rub*2 where code='average.material.laminate'");
-        entityManager.clear(); // Simulate the next request after an external catalog edit.
+        entityManager.clear();
         var after=calc(input);
         assertTrue(after.total().expected().compareTo(before.total().expected())>0);
         assertNotEquals(before.pricingVersion(),after.pricingVersion());
@@ -246,7 +245,7 @@ class UnitPriceCalculatorTest {
         assertEquals(new BigDecimal("9100"),sockets.amountRub());
         assertEquals(0,sockets.coefficient().compareTo(BigDecimal.ONE));
         var cable=result.details().lines().stream().filter(l->l.priceCode().equals("ref.E_cable_socket")).toList();
-        assertEquals(1,cable.size());assertEquals(0,cable.getFirst().quantity().compareTo(new BigDecimal("2"))); // ceil(68*2*1.05/100)
+        assertEquals(1,cable.size());assertEquals(0,cable.getFirst().quantity().compareTo(new BigDecimal("2")));
         var before=result.total().expected();
         jdbc.update("update price_matrix set unit_price_rub=unit_price_rub+100 where code='ref.E_socket_dry_comfort'");entityManager.clear();
         assertEquals(new BigDecimal("1700"),calc(data(Kitchen.defaults(),none())).total().expected().subtract(before));

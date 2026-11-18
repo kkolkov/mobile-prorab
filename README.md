@@ -6,7 +6,7 @@ Java 21, Spring Boot, PostgreSQL, JPA, Flyway; frontend — HTML/CSS/ES-моду
 
 Создание проекта: `docs/specification.docx` (с согласованным изменением AC-03).
 Уточнение проекта: `Postanovka_utochnenie_parametrov_proekta-3.docx`, версия 2.5.
-Текущее состояние и ограничения: `docs/CODEX_CONTEXT.md`.
+Руководство по работе с проектом: `docs/OPERATING_MANUAL.md`.
 
 ## Запуск на macOS
 

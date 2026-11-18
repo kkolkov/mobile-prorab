@@ -1,7 +1,5 @@
 const http = require('node:http');
 
-// Development only: share the app and its project API through the same Expo tunnel.
-// The upstream is fixed to this Mac; a client cannot select a host or proxy arbitrary URLs.
 function createApiProxy(upstreamPort = 8080) {
   return (req, res, next) => {
     if (!req.url?.startsWith('/prorab-api/')) return next();

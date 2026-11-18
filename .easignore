@@ -13,13 +13,11 @@
 **/*.pdf
 **/*.log
 **/.DS_Store
-**/.claude/
 /backend/
 /frontend/
 /docs/
 /gradle/
 **/.idea/
-/AGENTS.md
 /README.md
 /TEST-REPORT.md
 /Dockerfile

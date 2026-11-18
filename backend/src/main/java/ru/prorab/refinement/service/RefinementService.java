@@ -146,7 +146,7 @@ public class RefinementService {
     public RefinementResponse apply(UUID id,long version,UUID estimateId){
         Project p=project(id);ProjectRefinement r=prepare(p);
         RefinedEstimate active=readNullable(r.getActiveEstimateJson());
-        if(active!=null&&active.id().equals(estimateId))return response(p,r); // retry after response loss
+        if(active!=null&&active.id().equals(estimateId))return response(p,r);
         checkVersion(p,version);RefinedEstimate candidate=readNullable(r.getCandidateJson());
         if(candidate==null||!candidate.id().equals(estimateId)||candidate.revision()!=r.getRevision()||!r.getCalculationStatus().equals("ready")||r.getCalculationProjectVersion()!=p.getVersion())throw new BusinessException("Применить можно только актуальный полный расчёт");
         r.setActiveEstimateJson(write(candidate));
@@ -161,7 +161,6 @@ public class RefinementService {
     @Transactional
     public RefinementResponse discard(UUID id,long version){
         Project p=project(id);checkVersion(p,version);ProjectRefinement r=prepare(p);
-        // Legacy projects may have no historical input snapshot; their accepted estimate is still intact.
         boolean hasOriginal=r.getActiveInputJson()!=null;
         if(hasOriginal){
             RefinementData original=read(r.getActiveInputJson(),RefinementData.class);

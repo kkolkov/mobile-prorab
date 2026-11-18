@@ -34,7 +34,6 @@ public class ExecutionService {
  @Transactional public ExecutionResponse command(UUID id,String action,ExecutionCommand c){
   var p=project(id);var record=prepare(p);var s=read(record.getStateJson(),ExecutionState.class);
   var expenses=new ArrayList<>(s.expenses());var tasks=new ArrayList<>(s.tasks());var history=new ArrayList<>(s.history());
-  // Stable expense IDs make retry after a lost response safe; a different payload is never silently accepted.
   if(action.equals("expense")&&c.expenseId()!=null){var prior=expenses.stream().filter(e->e.id().equals(c.expenseId())).findFirst();if(prior.isPresent()){
    var e=prior.get();if(Objects.equals(e.title(),c.title())&&e.amount().compareTo(c.amount()==null?BigDecimal.ZERO:c.amount())==0&&Objects.equals(e.category(),c.category())&&Objects.equals(e.date(),c.date())&&Objects.equals(e.taskId(),c.taskId())&&photos.sameReceipt(id,e.receiptPhotoId(),c.receipt()))return response(p,record);
    throw new BusinessException("Этот идентификатор расхода уже использован");}}

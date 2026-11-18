@@ -56,7 +56,6 @@ export default function Refinement() {
     if(!drafts[key]) {
       const sectionsData:SectionData={apartment:{...snapshot.data.apartment,redevelopment:snapshot.data.apartment.redevelopment??snapshot.project.redevelopment},rooms:{rooms:snapshot.data.rooms,roomCountManual:snapshot.data.roomCountManual},kitchen:snapshot.data.kitchens,exteriors:snapshot.data.exteriors};
       const draft:Draft<K>={data:clone(sectionsData[key]),version:snapshot.project.version,confirmedRemovals:[]};
-      // Key and value are paired here; retain their association in the session map.
       Object.assign(drafts,{[key]:draft});
     }
     if(key==='kitchen')setKitchenId(Object.keys(drafts.kitchen!.data)[0]??'');

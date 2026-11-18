@@ -9,7 +9,6 @@ version = '1.0.0'
 
 tasks.named('test') { useJUnitPlatform() }
 
-// Ship only browser assets, never tests, development tooling, or local documents.
 tasks.named('processResources') {
     from('../frontend') {
         include 'index.html', 'css/**', 'js/**', 'porabadmin/**', 'prorabadmin/**'

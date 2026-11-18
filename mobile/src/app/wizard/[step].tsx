@@ -42,7 +42,6 @@ export default function Wizard() {
       if(step===5)emit({name:'estimate_requested',projectId:project?.projectId});
       const saved=project?await api.step(project.projectId,step,{...body,version:project.version}):await api.create({...body,questionnaire:{...wizard.answers,questionnaireVersion:'1'}});
       wizard.project=saved;
-      // Never spread the server response over unsaved answers on other steps.
       if(step===1){local.name=saved.name;local.nameSource=saved.nameSource;}
       emit({name:project?'project_step_completed':'project_draft_created',projectId:saved.projectId,step});
       if(step===5)emit({name:saved.estimateStatus==='ready'?'estimate_succeeded':'estimate_failed',projectId:saved.projectId});

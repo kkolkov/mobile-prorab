@@ -44,7 +44,6 @@ public class AreaAllocator {
         }
         free=distribute(slots,free,false);
         free=distribute(slots,free,true);
-        // Floors plus largest remainders preserve the exact residual, with deterministic UUID tie-breaking.
         Map<UUID,BigDecimal> fractions=new HashMap<>();
         BigDecimal allocated=BigDecimal.ZERO;
         for(Slot s:slots){BigDecimal raw=s.value;s.value=raw.setScale(2,RoundingMode.DOWN);fractions.put(s.id,raw.subtract(s.value));allocated=allocated.add(s.value);}

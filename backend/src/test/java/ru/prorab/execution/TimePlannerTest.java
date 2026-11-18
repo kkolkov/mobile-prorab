@@ -25,8 +25,8 @@ class TimePlannerTest {
   when(catalog.list()).thenReturn(List.of(norm("wallpaper","45.79")));
   var plan=planner.calculate(input(),costs(line("average.work.wallpaper","100"),line("average.material.wallpaper","100")));
   assertEquals(1,plan.workloads().size());assertEquals(0,new BigDecimal("45.79").compareTo(plan.workloads().getFirst().personHours()));
-  assertEquals(5,plan.phases().getFirst().durationDays()); // ceil(45.79 / 16 * 7 / 5)
-  assertEquals(9,plan.totalDays()); // plus explicitly estimated installation/cleanup
+  assertEquals(5,plan.phases().getFirst().durationDays());
+  assertEquals(9,plan.totalDays());
  }
  @Test void aggregatesRoomsAndOperationsBeforeRoundingPhaseDays(){
   when(catalog.list()).thenReturn(List.of(norm("tile_wall","115.26"),norm("tile_floor","119.78")));
@@ -42,7 +42,7 @@ class TimePlannerTest {
  @Test void curingIsSeparateAndUncoveredWorkKeepsAnExplicitEstimate(){
   when(catalog.list()).thenReturn(List.of(norm("screed","38.24")));
   var plan=planner.calculate(input(),costs(line("average.work.screed","100"),line("electrical","10")));
-  assertEquals(18,plan.phases().getFirst().durationDays()); // max(4 known calendar days, ceil(64*.2+5))
+  assertEquals(18,plan.phases().getFirst().durationDays());
   assertEquals(8,plan.phases().stream().filter(p->p.id().equals("drying")).findFirst().orElseThrow().durationDays());
   assertTrue(plan.assumptions().stream().anyMatch(n->n.contains("смешанная оценка")));
  }

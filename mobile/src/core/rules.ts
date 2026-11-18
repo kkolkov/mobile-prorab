@@ -32,7 +32,6 @@ export function apiBase(override?: string, hostUri?: string | null) {
   if (override) return override.replace(/\/$/, '');
   if (!hostUri) return 'https://mobile-prorab.onrender.com/api';
   const url = new URL(hostUri.includes('://') ? hostUri : `http://${hostUri}`);
-  // Expo's hostUri omits its scheme. Public Expo tunnels support HTTPS on port 443.
   if (url.hostname.endsWith('.exp.direct') || url.hostname.endsWith('.trycloudflare.com')) { url.protocol='https:'; url.port=''; }
   else if (url.protocol==='exp:') url.protocol='http:';
   else if (url.protocol==='exps:') url.protocol='https:';

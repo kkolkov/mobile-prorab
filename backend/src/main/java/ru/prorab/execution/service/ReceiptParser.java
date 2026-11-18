@@ -18,7 +18,6 @@ public class ReceiptParser {
    String line=lines.get(i);var label=TOTAL.matcher(line);
    if(label.find()){
     String rest=line.substring(label.end()).strip();
-    // Never choose VAT, cash tendered, change or the largest number on the receipt.
     if(!Pattern.compile("НДС|НАЛОГ|СКИДК|СДАЧ|НАЛИЧ",Pattern.CASE_INSENSITIVE|Pattern.UNICODE_CASE).matcher(rest).find()){
      if(rest.matches("[:=\\s₽]*")&&i+1<lines.size()&&lines.get(i+1).matches("[\\d\\s.,=₽РрУуБб.]+"))rest=lines.get(i+1);
      var m=MONEY.matcher(rest);var candidates=new ArrayList<BigDecimal>();while(m.find()){var value=new BigDecimal(m.group().replace(" ","").replace("\u00a0","").replace(',','.'));if(value.signum()>0&&value.compareTo(new BigDecimal("999999999"))<=0)candidates.add(value);}

@@ -635,7 +635,6 @@ ceil(4,006625) = 5 календарных дней. Округление идё�
 | Путь | Назначение |
 |---|---|
 | `docs/specification.docx` | Основная постановка первоначального сценария |
-| `docs/CODEX_CONTEXT.md` | История согласованных изменений и состояния релизов |
 | `backend/src/main/java/ru/prorab/pricing/service/UnitPriceCalculator.java` | Состав сметы, объёмы, ставки, коэффициенты, округления |
 | `backend/src/main/java/ru/prorab/pricing/service/PriceCatalog.java` | Чтение актуальных цен из БД, версия справочника |
 | `backend/src/main/java/ru/prorab/pricing/service/PriceAdminService.java` | Изменение/удаление/восстановление цен |

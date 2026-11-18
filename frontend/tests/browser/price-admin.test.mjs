@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {chromium,webkit} from 'playwright';
-// Local catalog only. Every test restores the original row, including after a failure.
 const base='http://localhost:8080';
 async function api(path='',body,method='PUT'){const r=await fetch(base+'/api/porabadmin/prices'+path,{method:body===undefined?'GET':method,headers:{'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});const raw=await r.text();assert.equal(r.status,200,raw);return raw?JSON.parse(raw):null;}
 for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: public price admin saves, preserves drafts/conflicts, deletes and restores`,{timeout:90000},async()=>{

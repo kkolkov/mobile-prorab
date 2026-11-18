@@ -24,7 +24,6 @@ for(const [engine,type] of Object.entries({chromium,webkit}))for(const mobile of
   await button('Финансы').click();await button('Добавить расход').click();await page.getByLabel('Название расхода',{exact:true}).fill('Штукатурка <test>');await page.getByLabel('Сумма, ₽',{exact:true}).fill('1234.50');
   await page.route('**/execution/expense',route=>route.abort());await button('Сохранить').click();await page.getByRole('alert').filter({hasText:/./}).waitFor();assert.equal(await page.getByLabel('Название расхода',{exact:true}).inputValue(),'Штукатурка <test>');
   await page.unroute('**/execution/expense');await save();await button('Изменить').waitFor();await page.reload();
-  // Expo tab is local state; select finances after reload.
   await button('Финансы').click();await button('Изменить').waitFor();s=await api(path+'/execution');assert.equal(s.spentTotal,1234.5);assert.equal(s.data.expenses.length,1);
   await button('Изменить').click();await page.getByLabel('Сумма, ₽',{exact:true}).fill('1500');
   const concurrent=await api(path+'/execution');await api(path+'/execution/shift',{version:concurrent.version,taskId:'assembly',days:1});

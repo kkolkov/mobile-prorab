@@ -1,4 +1,3 @@
-// Compress before upload; the server validates and re-encodes the actual image again.
 export async function preparePhoto(file,receipt=false){
  if(!file.type.startsWith('image/')||file.size>25*1024*1024)throw new Error('Выберите фотографию до 25 МБ.');
  const url=URL.createObjectURL(file);

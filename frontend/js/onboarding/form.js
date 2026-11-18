@@ -1,6 +1,5 @@
 import {questions, answersComplete, questionnaireTitle, questionnaireSubtitle} from './questions.js';
 
-// A controlled form: navigation owns the session answers; no storage happens on selection.
 export function questionnaireHtml(answers, busy=false) {
   return `<h1>${questionnaireTitle}</h1><p>${questionnaireSubtitle}</p>
     <form id="onboarding-form">${questions.map(question=>`<fieldset class="onboarding-question"><legend>${question.label}</legend>

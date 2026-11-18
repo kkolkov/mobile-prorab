@@ -18,8 +18,6 @@ public class AccessService {
  public AccessService(AccessRepository users, AllocationRepository allocations, EventRepository events, ProjectRepository projects) {
   this.users=users;this.allocations=allocations;this.events=events;this.projects=projects;
  }
- // The allocation row serializes first assignments, including concurrent requests for one new user.
- // Increment and project creation commit together; rollbacks do not consume a turn.
  @Transactional public void assign(UUID userId, UUID projectId) {
   Allocation sequence=allocations.locked();
   if(users.existsById(userId))return;
@@ -68,8 +66,6 @@ public class AccessService {
  private UserAccess find(UUID id){return users.findById(id).orElseThrow(()->new ResourceNotFoundException("Сначала сохраните первый проект"));}
  private UserAccess locked(UUID id){return users.locked(id).orElseThrow(()->new ResourceNotFoundException("Сначала сохраните первый проект"));}
  private AccessResponse saved(UserAccess u){return response(users.saveAndFlush(u));}
- // PostgreSQL timestamps store microseconds. Match that precision before the first response,
- // so retries return exactly the same timestamp even on Linux clocks with nanosecond precision.
  private static Instant persistedNow(){return Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);}
  private AccessResponse response(UserAccess u){
   boolean full=u.subscriptionStatus.equals("connected")||(u.freemiumEndsAt!=null&&Instant.now().isBefore(u.freemiumEndsAt));

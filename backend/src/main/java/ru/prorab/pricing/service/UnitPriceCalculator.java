@@ -80,7 +80,6 @@ public class UnitPriceCalculator implements RefinementCalculator {
                     bill.add("kitchen",label+": гарнитур с выбранными фасадами/столешницей (укрупнённая оценка)","joinery",length.divide(n("3"),8,RoundingMode.HALF_UP),material(k.facade(),bill.coefficients).multiply(material(k.countertop(),bill.coefficients)));
                     notes.add(label+": для каменной столешницы есть отдельный прайс, но цена обычной столешницы внутри гарнитура не выделена. Поэтому сохранена прежняя укрупнённая оценка гарнитура с монтажом; комплект с постформингом и камень сверху не начисляются.");
                 }else{
-                    // Imported cabinets are sold in 0.01 of a 3 m kit, not at the full kit price.
                     bill.reference("kitchen",label+": гарнитур","K_cabinets_"+bill.grade,length.divide(n("3"),8,RoundingMode.HALF_UP).divide(n("0.01"),0,RoundingMode.CEILING));
                     bill.reference("kitchen",label+": сборка гарнитура","L_kitchen_assembly",length);
                 }
@@ -185,7 +184,6 @@ public class UnitPriceCalculator implements RefinementCalculator {
             materials.add(new MaterialNeed(section,id,need));
         }
         void flushMaterials(){
-            // One purchase per SKU for the project; split whole packages between sections, never round per room.
             Map<String,Map<String,BigDecimal>> needs=new TreeMap<>();
             for(var m:materials)needs.computeIfAbsent(m.id(),k->new TreeMap<>()).merge(m.section(),m.amount(),BigDecimal::add);
             for(var item:needs.entrySet()){
@@ -204,7 +202,6 @@ public class UnitPriceCalculator implements RefinementCalculator {
             direct(section,name+": работа","average.work."+operation,quantity,BigDecimal.ONE);
             direct(section,name+": материалы","average.material."+operation,quantity,graded?level:BigDecimal.ONE);
         }
-        // Rates come from price_matrix; route quantities are explicit workbook estimates, not measurements.
         void electrical(String section,String label,BigDecimal points,BigDecimal cable,boolean wet,boolean light){
             if(points.signum()==0)return;
             materialNeed(section,light?"E_cable_light":"E_cable_socket",cable);
@@ -215,7 +212,6 @@ public class UnitPriceCalculator implements RefinementCalculator {
             BigDecimal chase=cable.multiply(n("0.4"));
             reference(section,label+": трассы в неуточнённых стенах","L_chase_other",chase);
             reference(section,label+": заделка штроб","L_chase_fill",chase);
-            // Workbook section: 25 x 25 mm; density is supplied in the material norm (1600 kg/m3).
             materialNeed(section,"E_chase_mix",chase.multiply(n("0.025")).multiply(n("0.025")));
             if(light){
                 reference(section,label+": светильник","E_light_"+grade,points);
@@ -234,7 +230,6 @@ public class UnitPriceCalculator implements RefinementCalculator {
             int bath=basin,wc=Set.of("combined_bathroom","toilet").contains(type)?1:0,kitchen=type.equals("kitchen")?1:0;
             if(basin+bath+wc+kitchen==0)return;
             BigDecimal scale=apartmentArea.divide(n("60"),12,RoundingMode.HALF_UP).sqrt(MathContext.DECIMAL64);
-            // Kitchen retains one sink; no automatic dishwasher/washer connection from the sample workbook.
             BigDecimal cold=n(""+(3*basin+3*bath+2*wc+3*kitchen)).multiply(scale);
             BigDecimal hot=n(""+(3*basin+3*bath+3*kitchen)).multiply(scale);
             BigDecimal sewer50=n(""+(2*(basin+bath+kitchen))).multiply(scale),sewer110=n(""+(2*wc)).multiply(scale);
@@ -293,7 +288,6 @@ public class UnitPriceCalculator implements RefinementCalculator {
             }
             if(surface.equals("ceiling")&&Set.of("unknown","required","stretch").contains(material)){
                 reference(section,name+": полотно","C_canvas",quantity);
-                // The perimeter package includes profile and fasteners: do not charge them again.
                 BigDecimal perimeter=quantity.sqrt(MathContext.DECIMAL64).multiply(n("4"));
                 reference(section,name+": монтаж с профилем","L_stretch_perimeter",perimeter);
                 reference(section,name+": вставка с установкой","L_stretch_inset",perimeter);return;

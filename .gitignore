@@ -14,4 +14,3 @@ mobile/.env.local
 Личный_дневник_*.docx
 Шаблон_личн*.docx
 *дневник*.docx
-**/.claude/

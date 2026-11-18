@@ -1,4 +1,3 @@
-// Durations are estimates: one display month is 30 days, not a calendar month.
 export function formatDays(days: number | null | undefined) {
   if (days == null || !Number.isInteger(days) || days < 0) return 'Пока не рассчитан';
   const months = Math.floor(days / 30), rest = days % 30;
@@ -13,7 +12,6 @@ export function projectsSubtitle(projects: readonly {status: string}[]) {
     ? 'Продолжите ремонт или создайте новый проект.' : 'Создайте новый проект.';
 }
 
-// Presentation only: completing the schedule does not change the persisted project status.
 export function projectAppearance(project: {status:string;executionProgressPercent?:number|null}) {
   if (project.status === 'draft') return {tone:'neutral',label:'Черновик'};
   if (project.status === 'completed' || project.executionProgressPercent === 100) return {tone:'sage',label:'Все этапы завершены'};

@@ -46,7 +46,7 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     await button(page,'Продолжить').click();await button(page,'Готовая к проживанию').click();
     await button(page,'Мои проекты').click();await page.reload();
     await button(page,'Expo МОЯ квартира 68 м²').click();await button(page,'Готовая к проживанию').waitFor();
-    assert.equal(await button(page,'Продолжить').isDisabled(),true); // unsaved choice lost after process/page restart
+    assert.equal(await button(page,'Продолжить').isDisabled(),true);
     await button(page,'Готовая к проживанию').click();await button(page,'Продолжить').click();await button(page,'Нет').waitFor();
     assert.equal(await button(page,'Нет').getAttribute('aria-selected'),'true');
     assert.equal(await button(page,'Уменьшить: Количество комнат').isDisabled(),false);
@@ -85,7 +85,6 @@ for(const [engine,type] of Object.entries({webkit,chromium}))test(`${engine}: CP
     await button(page,'Назад').click();await button(page,'Помещения').click();await button(page,'Спальня').waitFor();
     await button(page,'Удалить Спальня').click();await button(page,'Отмена').click();await button(page,'Спальня').waitFor();
     await button(page,'Продолжить').click();await button(page,'Балкон и лоджия').click();await select(page,'Нужен ремонт?','Да');await select(page,'Что нужно отремонтировать?','Оба');
-    // Normative areas stay empty, explicit refusals remain false.
     assert.equal(await page.getByLabel('Площадь балкона, м²',{exact:true}).inputValue(),'');
     const ceiling=button(page,'Потолок');await ceiling.first().click();await button(page,'Не требуется').click();
     await page.getByRole('checkbox',{name:'Освещение',exact:true}).first().click();
